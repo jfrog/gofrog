@@ -3,7 +3,6 @@ package fanout
 import (
         "io"
         "github.com/pkg/errors"
-        log "github.com/Sirupsen/logrus"
 )
 
 //A reader that emits its read to multiple pipes
@@ -95,11 +94,9 @@ func (r *FanoutReader) ReadAll() ([]interface{}, error) {
         for range r.singleReaders {
                 select {
                 case err := <-r.errs:
-                        log.Error("ERROR: ", err)
                         return nil, err
                 case result := <-r.results:
                         results[result.pos] = result.data
-                        log.Debugf("Doen fanout single reader: %d", result.pos)
                 }
         }
         return results, nil
@@ -110,37 +107,3 @@ func (r *FanoutReader) Close() {
                 pw.Close()
         }
 }
-
-/*func (r *MultiPipeReader) Read(b []byte) (n int, err error) {
-        n, err = r.reader.Read(b)
-        if n > 0 {
-                for i, pw := range r.pipeWriters {
-                        go func() {
-                                fmt.Print("*,")
-                                if _, werr := pw.Write(b[:n]); werr != nil {
-                                        if werr == io.EOF {
-                                                //r.done <- true
-                                        }
-                                        if werr == io.ErrClosedPipe {
-                                                log.Printf("Reader %d closed", i)
-                                                //r.done <- true
-                                        } else {
-                                                r.errs <- werr
-                                                //panic(werr)
-                                                return
-                                        }
-                                }
-                                r.done <- true
-                        }()
-                }
-                for range r.pipeWriters {
-                        select {
-                        case err := <-r.errs:
-                                fmt.Println("ERR!!!")
-                                return 0, err
-                        case <-r.done:
-                        }
-                }
-        }
-        return
-}*/
