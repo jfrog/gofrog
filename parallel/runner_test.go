@@ -38,7 +38,7 @@ func TestTask(t *testing.T) {
 	}
 	runner.Run()
 
-	errors := runner.Errors()
+	errs := runner.Errors()
 
 	close(results)
 	var resultsTotal int
@@ -50,16 +50,16 @@ func TestTask(t *testing.T) {
 	}
 
 	var errorsTotal int
-	for i, _ := range errors {
-		if errors[i] != nil {
+	for i, _ := range errs {
+		if errs[i] != nil {
 			errorsTotal += i
 		}
 	}
 	if errorsTotal != expectedErrorTotal {
-		t.Error("Unexpected errors total")
+		t.Error("Unexpected errs total")
 	}
 	if errorsTotal == 0 {
-		t.Error("Unexpected 0 errors total")
+		t.Error("Unexpected 0 errs total")
 	}
 
 	fmt.Println("expectedTotal=", expectedTotal)
