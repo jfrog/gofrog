@@ -36,7 +36,9 @@ func TestTask(t *testing.T) {
 			return nil
 		})
 	}
-	errors := runner.Run()
+	runner.Run()
+
+	errors := runner.Errors()
 
 	close(results)
 	var resultsTotal int

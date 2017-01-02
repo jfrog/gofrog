@@ -11,7 +11,8 @@ type Runner struct {
 }
 
 type task struct {
-	f func() error
+	f   func() error
+	err error
 }
 
 func NewRunner(maxParallel int) *Runner {
@@ -29,9 +30,8 @@ func (r *Runner) AddTask(f func() error) {
 	r.tasks = append(r.tasks, task)
 }
 
-func (r *Runner) Run() []error {
+func (r *Runner) Run() {
 	limitedParallel := cap(r.parallel) > 0
-	errs := make([]error, len(r.tasks))
 	var wg sync.WaitGroup
 	for i, t := range r.tasks {
 		wg.Add(1)
@@ -44,7 +44,7 @@ func (r *Runner) Run() []error {
 			}()
 
 			if err := t.f(); err != nil {
-				errs[i] = err
+				t.err = err
 			}
 			if limitedParallel {
 				<-r.parallel
@@ -53,5 +53,16 @@ func (r *Runner) Run() []error {
 
 	}
 	wg.Wait()
+}
+
+//Returns an array of errors according to the number of tasks or nil if there were no errors
+func (r *Runner) Errors() []error {
+	var errs []error
+	for i, task := range r.tasks {
+		if errs == nil {
+			errs = make([]error, len(r.tasks))
+		}
+		errs[i] = task.err
+	}
 	return errs
 }
