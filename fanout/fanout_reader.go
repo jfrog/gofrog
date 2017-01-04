@@ -1,33 +1,33 @@
 package fanout
 
 import (
-        "io"
-        "github.com/pkg/errors"
+	"io"
+	"github.com/pkg/errors"
 )
 
-//A reader that emits its read to multiple pipes
+//A reader that emits its read to multiple consumers using a ReadAll(p []byte) ([]interface{}, error) func
 type FanoutReader struct {
-        reader        io.Reader
-        singleReaders []SingleReader
-        pipeReaders   []*io.PipeReader
-        pipeWriters   []*io.PipeWriter
-        results       chan *readerResult
-        errs          chan error
+	reader      io.Reader
+	consumers   []Consumer
+	pipeReaders []*io.PipeReader
+	pipeWriters []*io.PipeWriter
+	results     chan *readerResult
+	errs        chan error
 }
 
-type SingleReader interface {
-        ReadAll(io.Reader) (interface{}, error)
+type Consumer interface {
+	ReadAll(io.Reader) (interface{}, error)
 }
 
-type ReaderFunc func(io.Reader) (interface{}, error)
+type ConsumerFunc func(io.Reader) (interface{}, error)
 
-func (f ReaderFunc) ReadAll(r io.Reader) (interface{}, error) {
-        return f(r)
+func (f ConsumerFunc) ReadAll(r io.Reader) (interface{}, error) {
+	return f(r)
 }
 
 type readerResult struct {
-        data interface{}
-        pos  int
+	data interface{}
+	pos  int
 }
 
 /*
@@ -37,73 +37,73 @@ type readerResult struct {
           |--w--[pw]--|--[pr]--r
 */
 
-func NewFanoutReader(reader io.Reader, singleReaders ... SingleReader) *FanoutReader {
-        procLen := len(singleReaders)
-        pipeReaders := make([]*io.PipeReader, procLen)
-        pipeWriters := make([]*io.PipeWriter, procLen)
-        done := make(chan *readerResult)
-        errs := make(chan error)
-        //Create pipe r/w for each reader
-        for i := 0; i < procLen; i++ {
-                pr, pw := io.Pipe()
-                pipeReaders[i] = pr
-                pipeWriters[i] = pw
-        }
-        return &FanoutReader{reader, singleReaders, pipeReaders, pipeWriters, done, errs}
+func NewFanoutReader(reader io.Reader, consumers ... Consumer) *FanoutReader {
+	procLen := len(consumers)
+	pipeReaders := make([]*io.PipeReader, procLen)
+	pipeWriters := make([]*io.PipeWriter, procLen)
+	done := make(chan *readerResult)
+	errs := make(chan error)
+	//Create pipe r/w for each reader
+	for i := 0; i < procLen; i++ {
+		pr, pw := io.Pipe()
+		pipeReaders[i] = pr
+		pipeWriters[i] = pw
+	}
+	return &FanoutReader{reader, consumers, pipeReaders, pipeWriters, done, errs}
 }
 
-func (r *FanoutReader) writers() (writers []io.Writer) {
-        //Convert to an array of io.Writers so it can be taken by a variadic func
-        //See: https://groups.google.com/forum/#!topic/golang-nuts/zU3BqD5mKs8
-        writers = make([]io.Writer, len(r.pipeWriters))
-        for i, w := range r.pipeWriters {
-                writers[i] = w
-        }
-        return
+func toWriters(pipeWriters []*io.PipeWriter) (writers []io.Writer) {
+	//Convert to an array of io.Writers so it can be taken by a variadic func
+	//See: https://groups.google.com/forum/#!topic/golang-nuts/zU3BqD5mKs8
+	writers = make([]io.Writer, len(pipeWriters))
+	for i, w := range pipeWriters {
+		writers[i] = w
+	}
+	return
 }
 
 func (r *FanoutReader) GetReader(i int) io.Reader {
-        return r.pipeReaders[i]
+	return r.pipeReaders[i]
 }
 
 func (r *FanoutReader) ReadAll() ([]interface{}, error) {
-        defer close(r.results)
-        defer close(r.errs)
+	defer close(r.results)
+	defer close(r.errs)
 
-        for i, sr := range r.singleReaders {
-                go func(sr SingleReader, pos int) {
-                        ret, perr := sr.ReadAll(r.pipeReaders[pos])
-                        if perr != nil {
-                                r.errs <- errors.WithStack(perr)
-                                //panic(perr)
-                                return
-                        }
-                        r.results <- &readerResult{ret, pos}
-                }(sr, i)
-        }
-        go func() {
-                defer r.Close()
-                mw := io.MultiWriter(r.writers()...)
-                _, err := io.Copy(mw, r.reader)
-                if err != nil {
-                        //panic(err)
-                        r.errs <- errors.WithStack(err)
-                }
-        }()
-        results := make([]interface{}, len(r.singleReaders))
-        for range r.singleReaders {
-                select {
-                case err := <-r.errs:
-                        return nil, err
-                case result := <-r.results:
-                        results[result.pos] = result.data
-                }
-        }
-        return results, nil
+	for i, sr := range r.consumers {
+		go func(sr Consumer, pos int) {
+			ret, perr := sr.ReadAll(r.pipeReaders[pos])
+			if perr != nil {
+				r.errs <- errors.WithStack(perr)
+				//panic(perr)
+				return
+			}
+			r.results <- &readerResult{ret, pos}
+		}(sr, i)
+	}
+	go func() {
+		defer r.Close()
+		mw := io.MultiWriter(toWriters(r.pipeWriters)...)
+		_, err := io.Copy(mw, r.reader)
+		if err != nil {
+			//panic(err)
+			r.errs <- errors.WithStack(err)
+		}
+	}()
+	results := make([]interface{}, len(r.consumers))
+	for range r.consumers {
+		select {
+		case err := <-r.errs:
+			return nil, err
+		case result := <-r.results:
+			results[result.pos] = result.data
+		}
+	}
+	return results, nil
 }
 
 func (r *FanoutReader) Close() {
-        for _, pw := range r.pipeWriters {
-                pw.Close()
-        }
+	for _, pw := range r.pipeWriters {
+		pw.Close()
+	}
 }
