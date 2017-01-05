@@ -4,22 +4,22 @@ import (
 	"io"
 )
 
-//A reader that emits its read to multiple consumers using an io.Reader Read(p []byte) (int, error) func
-type FanoutProgressiveReader struct {
+//A reader that emits its read to multiple consumers using an io.ReadAllReader Read(p []byte) (int, error) func
+type Reader struct {
 	reader      io.Reader
-	consumers   []ProgressiveConsumer
+	consumers   []Consumer
 	pipeReaders []*io.PipeReader
 	pipeWriters []*io.PipeWriter
 	multiWriter io.Writer
 }
 
-type ProgressiveConsumer interface {
+type Consumer interface {
 	Read([]byte) error
 }
 
-type ProgressiveConsumerFunc func([]byte) error
+type ConsumerFunc func([]byte) error
 
-func (f ProgressiveConsumerFunc) Read(p []byte) error {
+func (f ConsumerFunc) Read(p []byte) error {
 	return f(p)
 }
 
@@ -28,7 +28,7 @@ type progressiveReaderResult struct {
 	pos  int
 }
 
-func NewProgressiveFanoutReader(reader io.Reader, consumers ...ProgressiveConsumer) *FanoutProgressiveReader {
+func NewReader(reader io.Reader, consumers ...Consumer) *Reader {
 	procLen := len(consumers)
 	pipeReaders := make([]*io.PipeReader, procLen)
 	pipeWriters := make([]*io.PipeWriter, procLen)
@@ -39,11 +39,11 @@ func NewProgressiveFanoutReader(reader io.Reader, consumers ...ProgressiveConsum
 		pipeWriters[i] = pw
 	}
 	multiWriter := io.MultiWriter(toWriters(pipeWriters)...)
-	return &FanoutProgressiveReader{reader: reader, consumers: consumers, pipeReaders: pipeReaders,
+	return &Reader{reader:                  reader, consumers: consumers, pipeReaders: pipeReaders,
 		pipeWriters:                    pipeWriters, multiWriter: multiWriter}
 }
 
-func (r *FanoutProgressiveReader) Read(p []byte) (int, error) {
+func (r *Reader) Read(p []byte) (int, error) {
 	errs := make(chan error)
 	done := make(chan bool)
 
@@ -66,7 +66,7 @@ func (r *FanoutProgressiveReader) Read(p []byte) (int, error) {
 	}()
 
 	for i, sr := range r.consumers {
-		go func(sr ProgressiveConsumer, pos int) {
+		go func(sr Consumer, pos int) {
 			buf := make([]byte, len(p))
 			l, perr := r.pipeReaders[pos].Read(buf)
 			if perr != nil {
@@ -92,7 +92,7 @@ func (r *FanoutProgressiveReader) Read(p []byte) (int, error) {
 	return n, nil
 }
 
-func (r *FanoutProgressiveReader) Close() (err error) {
+func (r *Reader) Close() (err error) {
 	for _, pw := range r.pipeWriters {
 		e := pw.Close()
 		if err != nil {

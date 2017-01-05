@@ -6,22 +6,22 @@ import (
 )
 
 //A reader that emits its read to multiple consumers using a ReadAll(p []byte) ([]interface{}, error) func
-type FanoutReader struct {
+type ReadAllReader struct {
 	reader      io.Reader
-	consumers   []Consumer
+	consumers   []ReadAllConsumer
 	pipeReaders []*io.PipeReader
 	pipeWriters []*io.PipeWriter
 	results     chan *readerResult
 	errs        chan error
 }
 
-type Consumer interface {
+type ReadAllConsumer interface {
 	ReadAll(io.Reader) (interface{}, error)
 }
 
-type ConsumerFunc func(io.Reader) (interface{}, error)
+type ReadAllConsumerFunc func(io.Reader) (interface{}, error)
 
-func (f ConsumerFunc) ReadAll(r io.Reader) (interface{}, error) {
+func (f ReadAllConsumerFunc) ReadAll(r io.Reader) (interface{}, error) {
 	return f(r)
 }
 
@@ -37,7 +37,7 @@ type readerResult struct {
           |--w--[pw]--|--[pr]--r
 */
 
-func NewFanoutReader(reader io.Reader, consumers ... Consumer) *FanoutReader {
+func NewReadAllReader(reader io.Reader, consumers ... ReadAllConsumer) *ReadAllReader {
 	procLen := len(consumers)
 	pipeReaders := make([]*io.PipeReader, procLen)
 	pipeWriters := make([]*io.PipeWriter, procLen)
@@ -49,7 +49,7 @@ func NewFanoutReader(reader io.Reader, consumers ... Consumer) *FanoutReader {
 		pipeReaders[i] = pr
 		pipeWriters[i] = pw
 	}
-	return &FanoutReader{reader, consumers, pipeReaders, pipeWriters, done, errs}
+	return &ReadAllReader{reader, consumers, pipeReaders, pipeWriters, done, errs}
 }
 
 func toWriters(pipeWriters []*io.PipeWriter) (writers []io.Writer) {
@@ -62,16 +62,16 @@ func toWriters(pipeWriters []*io.PipeWriter) (writers []io.Writer) {
 	return
 }
 
-func (r *FanoutReader) GetReader(i int) io.Reader {
+func (r *ReadAllReader) GetReader(i int) io.Reader {
 	return r.pipeReaders[i]
 }
 
-func (r *FanoutReader) ReadAll() ([]interface{}, error) {
+func (r *ReadAllReader) ReadAll() ([]interface{}, error) {
 	defer close(r.results)
 	defer close(r.errs)
 
 	for i, sr := range r.consumers {
-		go func(sr Consumer, pos int) {
+		go func(sr ReadAllConsumer, pos int) {
 			ret, perr := sr.ReadAll(r.pipeReaders[pos])
 			if perr != nil {
 				r.errs <- errors.WithStack(perr)
@@ -102,7 +102,7 @@ func (r *FanoutReader) ReadAll() ([]interface{}, error) {
 	return results, nil
 }
 
-func (r *FanoutReader) Close() {
+func (r *ReadAllReader) Close() {
 	for _, pw := range r.pipeWriters {
 		pw.Close()
 	}

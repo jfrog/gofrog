@@ -40,7 +40,7 @@ func TestFanoutRead(t *testing.T) {
 	}
 
 	r := bytes.NewReader(inputBytes)
-	fr := NewFanoutReader(r, ConsumerFunc(proc), ConsumerFunc(proc), ConsumerFunc(proc1))
+	fr := NewReadAllReader(r, ReadAllConsumerFunc(proc), ReadAllConsumerFunc(proc), ReadAllConsumerFunc(proc1))
 	results, err := fr.ReadAll()
 
 	if err != nil {
@@ -80,7 +80,7 @@ func TestFanoutProgressiveRead(t *testing.T) {
 	}
 
 	r := bytes.NewReader(inputBytes)
-	pfr := NewProgressiveFanoutReader(r, ProgressiveConsumerFunc(proc1), ProgressiveConsumerFunc(proc2))
+	pfr := NewReader(r, ConsumerFunc(proc1), ConsumerFunc(proc2))
 	defer pfr.Close()
 
 	_, err := ioutil.ReadAll(pfr)
@@ -117,7 +117,7 @@ func TestFanoutProgressiveReadError(t *testing.T) {
 	}
 
 	r := bytes.NewReader(inputBytes)
-	pfr := NewProgressiveFanoutReader(r, ProgressiveConsumerFunc(proc1), ProgressiveConsumerFunc(proc2))
+	pfr := NewReader(r, ConsumerFunc(proc1), ConsumerFunc(proc2))
 	defer pfr.Close()
 
 	_, err := ioutil.ReadAll(pfr)
