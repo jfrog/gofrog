@@ -50,7 +50,6 @@ func (r *Reader) Read(p []byte) (int, error) {
 	var n int
 	var e error
 
-	//TODO: EOF is EOF - no point in reading the single readers
 	go func() {
 		//Read from reader and fan out to the writers
 		n, err := r.reader.Read(p)
