@@ -42,9 +42,7 @@ func (r *Runner) Run() {
 			r.parallel <- struct{}{}
 		}
 		go func(i int, t *task) {
-			defer func() {
-				wg.Done()
-			}()
+			defer wg.Done()
 			if err := t.f(); err != nil {
 				t.err = err
 			}
