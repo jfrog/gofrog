@@ -1,10 +1,10 @@
 package parallel
 
 import (
-	_ "time"
 	"sync"
 )
 
+// Runner is used to perform a number of tasks in parallel
 type Runner struct {
 	parallel chan struct{}
 	tasks    []*task
@@ -15,6 +15,7 @@ type task struct {
 	err error
 }
 
+// NewRunner generates a new runner from a given maximal number of parallel tasks
 func NewRunner(maxParallel int) *Runner {
 	var parallel chan struct{}
 	if maxParallel > 0 {
@@ -25,11 +26,13 @@ func NewRunner(maxParallel int) *Runner {
 	return runner
 }
 
+// AddTask creates task from a function and appends it to the runner
 func (r *Runner) AddTask(f func() error) {
-	task := &task{f:f}
+	task := &task{f: f}
 	r.tasks = append(r.tasks, task)
 }
 
+// Run executes the tasks, waits for all completions and fills errors if some occur
 func (r *Runner) Run() {
 	limitedParallel := cap(r.parallel) > 0
 	var wg sync.WaitGroup
@@ -42,7 +45,6 @@ func (r *Runner) Run() {
 			defer func() {
 				wg.Done()
 			}()
-
 			if err := t.f(); err != nil {
 				t.err = err
 			}
@@ -50,12 +52,11 @@ func (r *Runner) Run() {
 				<-r.parallel
 			}
 		}(i, t)
-
 	}
 	wg.Wait()
 }
 
-//Returns an array of errors according to the number of tasks or nil if there were no errors
+// Errors returns an array of errors according to the number of tasks or nil if there were no errors
 func (r *Runner) Errors() []error {
 	var errs []error
 	for i, task := range r.tasks {
