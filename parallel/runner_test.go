@@ -16,7 +16,7 @@ func TestTask(t *testing.T) {
 	const count = 70
 	results := make(chan int, 100)
 
-	runner := NewRunner(4)
+	runner := NewRunner1(4)
 	var expectedTotal int
 	var expectedErrorTotal int
 	for i := 0; i < count; i++ {
