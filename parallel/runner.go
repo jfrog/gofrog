@@ -1,8 +1,9 @@
 package parallel
 
 import (
-	"sync"
 	"errors"
+	"sync"
+	"sync/atomic"
 )
 
 type Runner interface {
@@ -19,53 +20,76 @@ type OnErrorFunc func(error)
 type task struct {
 	run     TaskFunc
 	onError OnErrorFunc
+	num     uint32
+}
+
+type taskError struct {
+	num int
+	err error
 }
 
 type runner struct {
-	tasks       chan *task
+	tasks     chan *task
+	taskCount uint32
+
 	cancel      chan struct{}
 	maxParallel int
 	failFast    bool
+
+	errors map[int]error
 }
 
-// Create new runner.
-// maxParallel - number of go routines which do the actually consuming, maxParallel always will be a positive number.
+// Create a new capacity runner - a runner we can add tasks to without blocking as long as the capacity is not reached.
+// maxParallel - number of go routines for task processing, maxParallel always will be a positive number.
+// acceptBeforeBlocking - number of tasks that can be added until a free processing goruntine is needed.
 // failFast - is set to true the will stop on first error.
-func NewProducerConsumer(maxParallel int, failFast bool) *runner {
+func NewRunner(maxParallel int, capacity uint, failFast bool) *runner {
 	consumers := maxParallel
 	if consumers < 1 {
 		consumers = 1
 	}
-	return &runner{
-		tasks:       make(chan *task),
+	if capacity < 1 {
+		capacity = 1
+	}
+	r := &runner{
+		tasks:       make(chan *task, capacity),
 		cancel:      make(chan struct{}),
 		maxParallel: consumers,
 		failFast:    failFast,
 	}
+	r.errors = make(map[int]error)
+	return r
 }
 
-// Add a task to the producer channel, in case of cancellation event (caused by @StopProducer()) will return non nil error.
-func (r *runner) AddTask(t TaskFunc) error {
-	taskWrapper := &task{run: t, onError: func(err error) {}}
-	return r.addTask(taskWrapper)
+// Create a new single capacity runner - a runner we can only add tasks to as long as there is a free goroutine in the
+// Run() loop to handle it.
+// maxParallel - number of go routines for task processing, maxParallel always will be a positive number.
+// failFast - is set to true the will stop on first error.
+func NewBounedRunner(maxParallel int, failFast bool) *runner {
+	return NewRunner(maxParallel, 1, failFast)
+}
+
+// Add a task to the producer channel, in case of cancellation event (caused by @Cancel()) will return non nil error.
+func (r *runner) AddTask(t TaskFunc) (int, error) {
+	return r.addTask(t, nil)
 }
 
 // t - the actual task which will be performed by the consumer.
-// errorHandler - execute on the returned error while running t
-func (r *runner) AddTaskWithError(t TaskFunc, errorHandler OnErrorFunc) error {
-	taskWrapper := &task{run: t, onError: errorHandler}
-	return r.addTask(taskWrapper)
+// onError - execute on the returned error while running t
+// Return the task number assigned to t. Useful to collect errors from the errors map (see @Errors())
+func (r *runner) AddTaskWithError(t TaskFunc, errorHandler OnErrorFunc) (int, error) {
+	return r.addTask(t, errorHandler)
 }
 
-//We're only able to add tasks without blocking, as long as there is a free goroutine in the Run() loop to handle it
-//TODO: Add an option for a new runner with capacity - number of tasks that can be added before blocking (needs to be >= maxParallel)
-//On runner cancel need to nil existing tasks channel
-func (r *runner) addTask(t *task) error {
+func (r *runner) addTask(t TaskFunc, errorHandler OnErrorFunc) (int, error) {
+	nextCount := atomic.AddUint32(&r.taskCount, 1)
+	task := &task{run: t, num: nextCount - 1, onError: errorHandler}
+
 	select {
-	case r.tasks <- t:
-		return nil
+	case r.tasks <- task:
+		return int(task.num), nil
 	case <-r.cancel:
-		return errors.New("Runner stopped!")
+		return -1, errors.New("Runner stopped!")
 	}
 }
 
@@ -79,17 +103,21 @@ func (r *runner) Close() {
 // Notice: Run() is a blocking operation.
 func (r *runner) Run() {
 	var wg sync.WaitGroup
+	var m sync.Mutex
 	var once sync.Once
 	for i := 0; i < r.maxParallel; i++ {
 		wg.Add(1)
 		go func(threadId int) {
-			defer func() {
-				wg.Done()
-			}()
+			defer wg.Done()
 			for t := range r.tasks {
 				e := t.run(threadId)
 				if e != nil {
-					t.onError(e)
+					if t.onError != nil {
+						t.onError(e)
+					}
+					m.Lock()
+					r.errors[int(t.num)] = e
+					m.Unlock()
 					if r.failFast {
 						once.Do(r.Cancel)
 						break
@@ -101,6 +129,24 @@ func (r *runner) Run() {
 	wg.Wait()
 }
 
+func (r *runner) Done() {
+	select {
+	case <-r.cancel:
+	//Already canceled
+	default:
+		close(r.tasks)
+	}
+}
+
 func (r *runner) Cancel() {
+	//Nil the tasks channel if it has buffering to avoid its selection
+	if cap(r.tasks) > 1 {
+		r.tasks = nil
+	}
 	close(r.cancel)
+}
+
+// Returns a map of errors keyed by the task number
+func (r *runner) Errors() map[int]error {
+	return r.errors
 }

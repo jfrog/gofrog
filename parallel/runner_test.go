@@ -1,12 +1,12 @@
 package parallel
 
 import (
-	"testing"
-	"fmt"
-	"math/rand"
-	"time"
-	"math"
 	"errors"
+	"fmt"
+	"math"
+	"math/rand"
+	"testing"
+	"time"
 )
 
 var src = rand.NewSource(time.Now().UnixNano())
@@ -16,26 +16,27 @@ func TestTask(t *testing.T) {
 	const count = 70
 	results := make(chan int, 100)
 
-	runner := NewRunner1(4)
+	runner := NewRunner(4, count, false)
 	var expectedTotal int
 	var expectedErrorTotal int
 	for i := 0; i < count; i++ {
 		expectedTotal += i
-		if float64(i) > math.Floor(float64(count) / 2) {
+		if float64(i) > math.Floor(float64(count)/2) {
 			expectedErrorTotal += i
 		}
 
 		x := i
-		runner.AddTask(func() error {
+		runner.AddTask(func(i int) error {
 			results <- x
 			time.Sleep(time.Millisecond * time.Duration(rnd.Intn(50)))
-			fmt.Printf("%d\n", x)
-			if float64(x) > math.Floor(float64(count) / 2) {
+			fmt.Printf("Run: %d\n", x)
+			if float64(x) > math.Floor(float64(count)/2) {
 				return errors.New(fmt.Sprintf("Second half value %d not counted", x))
 			}
 			return nil
 		})
 	}
+	runner.Done()
 	runner.Run()
 
 	errs := runner.Errors()
@@ -46,17 +47,19 @@ func TestTask(t *testing.T) {
 		resultsTotal += result
 	}
 	if resultsTotal != expectedTotal {
-		t.Error("Unexpected results total")
+		t.Error("Unexpected results total:", resultsTotal)
 	}
 
 	var errorsTotal int
-	for i, _ := range errs {
-		if errs[i] != nil {
-			errorsTotal += i
+	for k, v := range errs {
+		fmt.Printf("err %v: %v\n", k, v)
+
+		if v != nil {
+			errorsTotal += k
 		}
 	}
 	if errorsTotal != expectedErrorTotal {
-		t.Error("Unexpected errs total")
+		t.Error("Unexpected errs total:", errorsTotal)
 	}
 	if errorsTotal == 0 {
 		t.Error("Unexpected 0 errs total")
