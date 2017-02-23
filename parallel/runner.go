@@ -12,6 +12,7 @@ type Runner interface {
 	Run()
 	Done()
 	Cancel()
+	Errors() map[int]error
 }
 
 type TaskFunc func(int) error
