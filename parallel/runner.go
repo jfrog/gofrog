@@ -7,10 +7,11 @@ import (
 )
 
 type Runner interface {
-	AddTask(TaskFunc) error
-	AddTaskWithError(TaskFunc, OnErrorFunc) error
+	AddTask(TaskFunc) (int, error)
+	AddTaskWithError(TaskFunc, OnErrorFunc) (int, error)
 	Run()
-	Close()
+	Done()
+	Cancel()
 }
 
 type TaskFunc func(int) error
