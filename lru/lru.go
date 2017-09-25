@@ -7,7 +7,7 @@ import (
 
 type Cache struct {
 	cache  *cacheBase
-	lock   sync.RWMutex
+	lock   sync.Mutex
 	noSync bool
 }
 
@@ -81,8 +81,8 @@ func (c *Cache) RemoveOldest() {
 
 func (c *Cache) Len() int {
 	if !c.noSync {
-		c.lock.RLock()
-		defer c.lock.RUnlock()
+		c.lock.Lock()
+		defer c.lock.Unlock()
 	}
 	return c.cache.Len()
 }
