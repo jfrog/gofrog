@@ -31,6 +31,8 @@ func GenerateKeyId(key string) (string,error){
 		return "",errors.New("Signing key is empty")
 	}
 	h := sha256.New()
+	h.Write([]byte(key))
 	sha256 :=  fmt.Sprintf("%x", (h.Sum(nil)))
 	return sha256[:6],nil
 }
+
