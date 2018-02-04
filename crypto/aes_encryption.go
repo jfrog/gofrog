@@ -59,7 +59,7 @@ func decrypt(ciphertext []byte, key []byte) (string, error) {
 // {{key-id}}${{algo}}${{encrypted-value}}
 // example: e67gef$aes256$adsad321424324fdsdfs3Rddi90oP34xV
 func Encrypt(text,key,keyId string) (string,error){
-	// base 64 decoding of key
+	// hex decoding of key
 	KeyByte, err := hex.DecodeString(key)
 	cipherText,err:=encrypt([]byte(text),KeyByte)
 	if err != nil{
@@ -76,7 +76,7 @@ func Decrypt(FormattedCipherText,key,keyId string) (string,error){
 	}
 	//keep cipher text only
  	cipherText:=strings.Replace(FormattedCipherText,formatEncryption,"",-1)
-	// base 64 decoding of key and text
+	// hex decoding of key and text
 	KeyByte, err := hex.DecodeString(key)
 	cipherTextByte, err := base64.URLEncoding.DecodeString(cipherText)
 	text,err:=decrypt(cipherTextByte,KeyByte)
@@ -93,8 +93,8 @@ func IsTextEncrypted(FormattedCipherText,key,keyId string) (bool,error){
 	}
 	//keep cipher text only
 	cipherText:=strings.Replace(FormattedCipherText,formatEncryption,"",-1)
-	// base 64 decoding of key and text
-	KeyByte, err := base64.URLEncoding.DecodeString(key)
+	// hex decoding of key and text
+	KeyByte, err := hex.DecodeString(key)
 	cipherTextByte, err := base64.URLEncoding.DecodeString(cipherText)
 	_,err=decrypt(cipherTextByte,KeyByte)
 	if err != nil{
