@@ -8,6 +8,7 @@ import (
 	"io"
 	"encoding/base64"
 	"strings"
+ 	"encoding/hex"
 )
 
 
@@ -59,7 +60,7 @@ func decrypt(ciphertext []byte, key []byte) (string, error) {
 // example: e67gef$aes256$adsad321424324fdsdfs3Rddi90oP34xV
 func Encrypt(text,key,keyId string) (string,error){
 	// base 64 decoding of key
-	KeyByte, err := base64.URLEncoding.DecodeString(key)
+	KeyByte, err := hex.DecodeString(key)
 	cipherText,err:=encrypt([]byte(text),KeyByte)
 	if err != nil{
 		return "",err
@@ -76,7 +77,7 @@ func Decrypt(FormattedCipherText,key,keyId string) (string,error){
 	//keep cipher text only
  	cipherText:=strings.Replace(FormattedCipherText,formatEncryption,"",-1)
 	// base 64 decoding of key and text
-	KeyByte, err := base64.URLEncoding.DecodeString(key)
+	KeyByte, err := hex.DecodeString(key)
 	cipherTextByte, err := base64.URLEncoding.DecodeString(cipherText)
 	text,err:=decrypt(cipherTextByte,KeyByte)
 	if err != nil{

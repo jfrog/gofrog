@@ -1,17 +1,17 @@
 package crypto
 
 import (
-	"encoding/base64"
-	"crypto/rand"
+ 	"crypto/rand"
 	"fmt"
 	"crypto/sha256"
 	"errors"
+	"encoding/hex"
 )
 
 
 func GenerateRandomKeyString(keySize int) (string, error) {
 	b, err := generateRandomBytes(keySize)
-	return base64.URLEncoding.EncodeToString(b), err
+	return hex.EncodeToString(b), err
 }
 
 // generate random key with specific size
