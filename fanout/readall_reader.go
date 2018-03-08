@@ -69,13 +69,18 @@ func (r *ReadAllReader) GetReader(i int) io.Reader {
 func (r *ReadAllReader) ReadAll() ([]interface{}, error) {
 	defer close(r.results)
 	defer close(r.errs)
+	multiWriterError := make(chan error)
+	defer close(multiWriterError)
 
 	for i, sr := range r.consumers {
 		go func(sr ReadAllConsumer, pos int) {
-			ret, perr := sr.ReadAll(r.pipeReaders[pos])
+			reader := r.pipeReaders[pos]
+			// The reader might stop but the writer hasn't done
+			// Closing the pipe will cause an error to the writer which will cause all readers to stop as well
+			defer reader.Close()
+			ret, perr := sr.ReadAll(reader)
 			if perr != nil {
 				r.errs <- errors.WithStack(perr)
-				//panic(perr)
 				return
 			}
 			r.results <- &readerResult{ret, pos}
@@ -86,24 +91,46 @@ func (r *ReadAllReader) ReadAll() ([]interface{}, error) {
 		mw := io.MultiWriter(toWriters(r.pipeWriters)...)
 		_, err := io.Copy(mw, r.reader)
 		if err != nil {
-			//panic(err)
-			r.errs <- errors.WithStack(err)
+			multiWriterError <- errors.WithStack(err)
 		}
 	}()
-	results := make([]interface{}, len(r.consumers))
-	for range r.consumers {
-		select {
-		case err := <-r.errs:
-			return nil, err
-		case result := <-r.results:
-			results[result.pos] = result.data
-		}
-	}
-	return results, nil
+	return getAllReadersResult(r, multiWriterError)
 }
 
 func (r *ReadAllReader) Close() {
 	for _, pw := range r.pipeWriters {
 		pw.Close()
 	}
+}
+
+func getAllReadersResult(r *ReadAllReader, multiWriterError chan error) ([]interface{}, error) {
+	results := make([]interface{}, len(r.consumers))
+	var firstError error
+	var isMissingConsume bool
+	for range r.consumers {
+		select {
+		case err := <-r.errs:
+			if firstError == nil {
+				firstError = err
+			}
+		case err := <-multiWriterError:
+			if firstError == nil {
+				firstError = err
+			}
+			isMissingConsume = true
+		case result := <-r.results:
+			results[result.pos] = result.data
+		}
+	}
+	// In case we got error during writing we will left with one consumer which wasn't consumed.
+	if isMissingConsume {
+		select {
+		case <-r.errs:
+		case <-r.results:
+		}
+	}
+	if firstError != nil {
+		return nil, firstError
+	}
+	return results, nil
 }

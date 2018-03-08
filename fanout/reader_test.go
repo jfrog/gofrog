@@ -9,6 +9,8 @@ import (
 	"io/ioutil"
 	"crypto/sha1"
 	"errors"
+	"strings"
+	"fmt"
 )
 
 const input = "yogreshobuddy!"
@@ -141,4 +143,25 @@ func TestFanoutProgressiveReadError(t *testing.T) {
 	if sum2str == sha2sum {
 		t.Error("Sha2 calculation should have terminated a head of time due to an error")
 	}
+}
+
+// This scenario can cause deadlock
+func TestSyncReadOnError(t *testing.T) {
+	proc1 := func(r1 io.Reader) (interface{}, error) {
+		n, e := ioutil.ReadAll(r1)
+		return n, e
+	}
+
+	proc2 := func(r2 io.Reader) (interface{}, error) {
+		buf := make([]byte, 1)
+		n, err := io.ReadFull(r2, buf)
+		return n, err
+
+	}
+
+	pfr := NewReadAllReader(strings.NewReader("someNotTooShortString"), ReadAllConsumerFunc(proc1), ReadAllConsumerFunc(proc2))
+	defer pfr.Close()
+	all, e := pfr.ReadAll()
+	fmt.Println(all)
+	fmt.Println(e)
 }
