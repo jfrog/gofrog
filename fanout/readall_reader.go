@@ -3,6 +3,8 @@ package fanout
 import (
 	"io"
 	"github.com/pkg/errors"
+	"sync"
+	"fmt"
 )
 
 //A reader that emits its read to multiple consumers using a ReadAll(p []byte) ([]interface{}, error) func
@@ -41,8 +43,8 @@ func NewReadAllReader(reader io.Reader, consumers ... ReadAllConsumer) *ReadAllR
 	procLen := len(consumers)
 	pipeReaders := make([]*io.PipeReader, procLen)
 	pipeWriters := make([]*io.PipeWriter, procLen)
-	done := make(chan *readerResult)
-	errs := make(chan error)
+	done := make(chan *readerResult, procLen)
+	errs := make(chan error, procLen)
 	//Create pipe r/w for each reader
 	for i := 0; i < procLen; i++ {
 		pr, pw := io.Pipe()
@@ -72,38 +74,54 @@ func (r *ReadAllReader) ReadAll() ([]interface{}, error) {
 
 	for i, sr := range r.consumers {
 		go func(sr ReadAllConsumer, pos int) {
-			ret, perr := sr.ReadAll(r.pipeReaders[pos])
+			reader := r.pipeReaders[pos]
+			// The reader might stop but the writer hasn't done
+			// Closing the pipe will cause an error to the writer which will cause all readers to stop as well
+			defer reader.Close()
+			ret, perr := sr.ReadAll(reader)
 			if perr != nil {
 				r.errs <- errors.WithStack(perr)
-				//panic(perr)
 				return
 			}
 			r.results <- &readerResult{ret, pos}
 		}(sr, i)
 	}
+	var multiWriterError error
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
-		defer r.Close()
+		defer wg.Done()
+		defer r.close()
 		mw := io.MultiWriter(toWriters(r.pipeWriters)...)
 		_, err := io.Copy(mw, r.reader)
 		if err != nil {
-			//panic(err)
-			r.errs <- errors.WithStack(err)
+			// probably caused due to closed pipe reader
+			multiWriterError = fmt.Errorf("fanout multiwriter error: %v ", err)
 		}
 	}()
+	wg.Wait()
+	return getAllReadersResult(r, multiWriterError)
+}
+
+func (r *ReadAllReader) close() {
+	for _, pw := range r.pipeWriters {
+		pw.Close()
+	}
+}
+
+func getAllReadersResult(r *ReadAllReader, err error) ([]interface{}, error) {
 	results := make([]interface{}, len(r.consumers))
+	lastError := err
 	for range r.consumers {
 		select {
-		case err := <-r.errs:
-			return nil, err
+		case e := <-r.errs:
+			lastError = e
 		case result := <-r.results:
 			results[result.pos] = result.data
 		}
 	}
-	return results, nil
-}
-
-func (r *ReadAllReader) Close() {
-	for _, pw := range r.pipeWriters {
-		pw.Close()
+	if lastError != nil {
+		return nil, lastError
 	}
+	return results, nil
 }

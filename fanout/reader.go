@@ -2,6 +2,7 @@ package fanout
 
 import (
 	"io"
+	"sync"
 )
 
 //A reader that emits its read to multiple consumers using an io.Reader Read(p []byte) (int, error) func
@@ -44,22 +45,27 @@ func NewReader(reader io.Reader, consumers ...Consumer) *Reader {
 }
 
 func (r *Reader) Read(p []byte) (int, error) {
-	errs := make(chan error)
-	done := make(chan bool)
+	procLen := len(r.consumers)
+	errs := make(chan error, procLen)
+	done := make(chan bool, procLen)
 
 	var n int
 	var e error
 
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+		defer r.close()
 		//Read from reader and fan out to the writers
 		n, err := r.reader.Read(p)
 		if err != nil {
 			//Do not wrap the read err or EOF will not be handled
-			errs <- err
+			e = err
 		} else {
 			_, err = r.multiWriter.Write(p[:n])
 			if err != nil {
-				errs <- err
+				e = err
 			}
 		}
 	}()
@@ -81,17 +87,18 @@ func (r *Reader) Read(p []byte) (int, error) {
 		}(sr, i)
 	}
 
+	wg.Wait()
 	for range r.consumers {
 		select {
-		case e = <-errs:
-			return n, e
+		case err := <-errs:
+			e = err
 		case <-done:
 		}
 	}
-	return n, nil
+	return n, e
 }
 
-func (r *Reader) Close() (err error) {
+func (r *Reader) close() (err error) {
 	for _, pw := range r.pipeWriters {
 		e := pw.Close()
 		if err != nil {
