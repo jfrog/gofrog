@@ -125,7 +125,6 @@ func TestFailFastOnTaskError(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer func() {
-			runner.Done()
 			wg.Done()
 		}()
 		produceTasks(runner, results, errorsQueue, createTaskWithIntAsErrorFunc)
@@ -188,7 +187,7 @@ func checkResult(expectedTotal int, results <-chan int, t *testing.T) {
 }
 
 func produceTasks(runner *runner, results chan int, errorsQueue *ErrorsQueue, taskCreator taskCreatorFunc) int {
-	defer runner.Close()
+	defer runner.Done()
 	var expectedTotal int
 	for i := 0; i < numOfProducerCycles; i++ {
 		taskFunc := taskCreator(i, results)

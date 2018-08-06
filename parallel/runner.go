@@ -66,7 +66,7 @@ func NewRunner(maxParallel int, capacity uint, failFast bool) *runner {
 // Create a new single capacity runner - a runner we can only add tasks to as long as there is a free goroutine in the
 // Run() loop to handle it.
 // maxParallel - number of go routines for task processing, maxParallel always will be a positive number.
-// failFast - is set to true the will stop on first error.
+// failFast - if set to true the runner will stop on first error.
 func NewBounedRunner(maxParallel int, failFast bool) *runner {
 	return NewRunner(maxParallel, 1, failFast)
 }
@@ -88,16 +88,12 @@ func (r *runner) addTask(t TaskFunc, errorHandler OnErrorFunc) (int, error) {
 	task := &task{run: t, num: nextCount - 1, onError: errorHandler}
 
 	select {
-	case r.tasks <- task:
-		return int(task.num), nil
 	case <-r.cancel:
 		return -1, errors.New("Runner stopped!")
+	default:
+		r.tasks <- task
+		return int(task.num), nil
 	}
-}
-
-// The producer notify that no more task will be produced.
-func (r *runner) Close() {
-	close(r.tasks)
 }
 
 // Run r.maxParallel go routines in order to consume all the tasks
@@ -131,21 +127,18 @@ func (r *runner) Run() {
 	wg.Wait()
 }
 
+// The producer notifies that no more tasks will be produced.
 func (r *runner) Done() {
-	select {
-	case <-r.cancel:
-	//Already canceled
-	default:
-		close(r.tasks)
-	}
+	close(r.tasks)
 }
 
 func (r *runner) Cancel() {
-	//Nil the tasks channel if it has buffering to avoid its selection
-	if cap(r.tasks) > 1 {
-		r.tasks = nil
-	}
+	// No more adding tasks
 	close(r.cancel)
+	// Consume all tasks left
+	for len(r.tasks) > 0 {
+		<-r.tasks
+	}
 }
 
 // Returns a map of errors keyed by the task number
