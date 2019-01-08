@@ -3,8 +3,7 @@ package io
 import (
 	"bufio"
 	"errors"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -13,7 +12,9 @@ import (
 	"sync"
 )
 
-func RunCmdOutput(config CmdConfig) ([]byte, error) {
+// Returns the output of the external process.
+// If the output is not needed, use RunCmd
+func RunCmdOutput(config CmdConfig) (string, error) {
 	for k, v := range config.GetEnv() {
 		os.Setenv(k, v)
 	}
@@ -24,9 +25,11 @@ func RunCmdOutput(config CmdConfig) ([]byte, error) {
 		cmd.Stderr = config.GetErrWriter()
 		defer config.GetErrWriter().Close()
 	}
-	return cmd.Output()
+	output, err := cmd.Output()
+	return string(output), err
 }
 
+// Runs the external process and prints the output of the process.
 func RunCmd(config CmdConfig) error {
 	for k, v := range config.GetEnv() {
 		os.Setenv(k, v)
@@ -55,6 +58,7 @@ func RunCmd(config CmdConfig) error {
 
 // Executes the command and captures the output.
 // Analyze each line to match the provided regex.
+// Returns the complete stdout output of the command.
 func RunCmdWithOutputParser(config CmdConfig, regExpStruct ...*CmdOutputPattern) (string, error) {
 	var wg sync.WaitGroup
 	for k, v := range config.GetEnv() {
@@ -64,29 +68,30 @@ func RunCmdWithOutputParser(config CmdConfig, regExpStruct ...*CmdOutputPattern)
 	cmd := config.GetCmd()
 	cmdReader, err := cmd.StdoutPipe()
 	if err != nil {
-		return "", errorutils.CheckError(err)
+		return "", err
 	}
 	defer cmdReader.Close()
 	scanner := bufio.NewScanner(cmdReader)
 	cmdReaderStderr, err := cmd.StderrPipe()
 	if err != nil {
-		return "", errorutils.CheckError(err)
+		return "", err
 	}
 	defer cmdReaderStderr.Close()
 	scannerStderr := bufio.NewScanner(cmdReaderStderr)
 	err = cmd.Start()
 	if err != nil {
-		return "", errorutils.CheckError(err)
+		return "", err
 	}
 	errChan := make(chan error)
-	var output string
+	var stdoutOutput string
 	wg.Add(1)
 	go func() {
 		for scanner.Scan() {
 			line := scanner.Text()
 			for _, regExp := range regExpStruct {
-				regExp.matchedResult = regExp.RegExp.FindString(line)
-				if regExp.matchedResult != "" {
+				matched := regExp.RegExp.Match([]byte(line))
+				if matched {
+					regExp.matchedResults = regExp.RegExp.FindStringSubmatch(line)
 					regExp.line = line
 					line, err = regExp.ExecFunc()
 					if err != nil {
@@ -94,8 +99,8 @@ func RunCmdWithOutputParser(config CmdConfig, regExpStruct ...*CmdOutputPattern)
 					}
 				}
 			}
-			log.Output(line)
-			output += line + "\n"
+			fmt.Println(line)
+			stdoutOutput += line + "\n"
 		}
 		wg.Done()
 	}()
@@ -105,8 +110,9 @@ func RunCmdWithOutputParser(config CmdConfig, regExpStruct ...*CmdOutputPattern)
 			line := scannerStderr.Text()
 			var scannerError error
 			for _, regExp := range regExpStruct {
-				regExp.matchedResult = regExp.RegExp.FindString(line)
-				if regExp.matchedResult != "" {
+				matched := regExp.RegExp.Match([]byte(line))
+				if matched {
+					regExp.matchedResults = regExp.RegExp.FindStringSubmatch(line)
 					regExp.line = line
 					line, scannerError = regExp.ExecFunc()
 					if scannerError != nil {
@@ -115,7 +121,7 @@ func RunCmdWithOutputParser(config CmdConfig, regExpStruct ...*CmdOutputPattern)
 					}
 				}
 			}
-			log.Output(line)
+			fmt.Fprintf(os.Stderr, line+"\n")
 			if scannerError != nil {
 				break
 			}
@@ -129,9 +135,9 @@ func RunCmdWithOutputParser(config CmdConfig, regExpStruct ...*CmdOutputPattern)
 	}()
 
 	for err := range errChan {
-		return output, err
+		return stdoutOutput, err
 	}
-	return output, nil
+	return stdoutOutput, nil
 }
 
 type CmdConfig interface {
@@ -153,26 +159,27 @@ func GetRegExp(regex string) (*regexp.Regexp, error) {
 // Mask the credentials information from the line. The credentials are build as user:password
 // For example: http://user:password@127.0.0.1:8081/artifactory/path/to/repo
 func (reg *CmdOutputPattern) MaskCredentials() (string, error) {
-	splittedResult := strings.Split(reg.matchedResult, "//")
-	return strings.Replace(reg.line, reg.matchedResult, splittedResult[0]+"//***.***@", 1), nil
+	splittedResult := strings.Split(reg.matchedResults[0], "//")
+	return strings.Replace(reg.line, reg.matchedResults[0], splittedResult[0]+"//***.***@", 1), nil
 }
 
 func (reg *CmdOutputPattern) Error() (string, error) {
-	log.Output(reg.line)
-	return "", errorutils.CheckError(errors.New(reg.ErrorMessage + strings.TrimSpace(reg.ModuleRegExp.FindString(reg.line))))
+	fmt.Fprintf(os.Stderr, reg.line)
+	if len(reg.matchedResults) > 1 {
+		return "", errors.New(reg.ErrorMessage + strings.TrimSpace(reg.matchedResults[1]))
+	}
+	return "", errors.New(reg.ErrorMessage)
 }
 
 // RegExp - The regexp that the line will be searched upon.
-// ModuleRegExp - The regex that the module@version will be searched upon
-// matchedResult - The result string that was found by the regex
+// matchedResults - The slice result that was found by the regex
 // line - The output line from the external process
 // ErrorMessage - Error message or part of the error that will be returned
 // ExecFunc - The function to execute
 type CmdOutputPattern struct {
-	RegExp        *regexp.Regexp
-	ModuleRegExp  *regexp.Regexp
-	matchedResult string
-	line          string
-	ErrorMessage  string
-	ExecFunc      func() (string, error)
+	RegExp         *regexp.Regexp
+	matchedResults []string
+	line           string
+	ErrorMessage   string
+	ExecFunc       func() (string, error)
 }

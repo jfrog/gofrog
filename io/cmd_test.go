@@ -1,9 +1,11 @@
 package io
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
+
 func TestRemoveCredentialsFromURL(t *testing.T) {
 	regExpProtocol, err := GetRegExp(`((http|https):\/\/\w.*?:\w.*?@)`)
 	if err != nil {
@@ -23,25 +25,28 @@ func TestRemoveCredentialsFromURL(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			test.regex.matchedResult = test.regex.RegExp.FindString(test.regex.line)
-			if test.matched && test.regex.matchedResult == "" {
+			test.regex.matchedResults = test.regex.RegExp.FindStringSubmatch(test.regex.line)
+			if test.matched && len(test.regex.matchedResults) != 3 {
+				t.Error(fmt.Sprintf("Expected to find 3 results, however, found %d.", len(test.regex.matchedResults)))
+			}
+			if test.matched && test.regex.matchedResults[0] == "" {
 				t.Error("Expected to find a match.")
 			}
-			if test.matched && test.regex.matchedResult != "" {
+			if test.matched {
 				actual, _ := test.regex.MaskCredentials()
 				if !strings.EqualFold(actual, test.expectedLine) {
-					t.Errorf("Expected: %s, The Regex found %s and the masked line: %s", test.expectedLine, test.regex.matchedResult, actual)
+					t.Errorf("Expected: %s, The Regex found %s and the masked line: %s", test.expectedLine, test.regex.matchedResults[0], actual)
 				}
 			}
-			if !test.matched && test.regex.matchedResult != "" {
-				t.Error("Expected to find zero match, found:", test.regex.matchedResult)
+			if !test.matched && len(test.regex.matchedResults) != 0 {
+				t.Error("Expected to find zero match, found:", test.regex.matchedResults[0])
 			}
 		})
 	}
 }
 
 func TestReturnErrorOnNotFound(t *testing.T) {
-	regExpProtocol, err := GetRegExp(`(404 Not Found)`)
+	regExpProtocol, err := GetRegExp(`[^go:]([^\/\r\n]+\/[^\r\n\s:]*).*(404 Not Found)`)
 	if err != nil {
 		t.Error(err)
 	}
@@ -51,17 +56,20 @@ func TestReturnErrorOnNotFound(t *testing.T) {
 		regex CmdOutputPattern
 		error bool
 	}{
-		{"Without Error", CmdOutputPattern{RegExp: regExpProtocol, line: "This is an example line http://user:password@127.0.0.1:8081/artifactory/path/to/repo"}, false},
-		{"With Error", CmdOutputPattern{RegExp: regExpProtocol, line: "This is an example line http://user:password@127.0.0.1:8081/artifactory/path/to/repo: 404 Not Found"}, true},
+		{"Without Error", CmdOutputPattern{RegExp: regExpProtocol, line: "go: github.com/jfrog/jfrog-client-go@v0.2.1: This is an example line http://user:password@127.0.0.1:8081/artifactory/path/to/repo"}, false},
+		{"With Error", CmdOutputPattern{RegExp: regExpProtocol, line: "go: github.com/jfrog/jfrog-client-go@v0.2.1: This is an example line http://user:password@127.0.0.1:8081/artifactory/path/to/repo: 404 Not Found"}, true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			test.regex.matchedResult = test.regex.RegExp.FindString(test.regex.line)
-			if test.regex.matchedResult == "" && test.error {
+			test.regex.matchedResults = test.regex.RegExp.FindStringSubmatch(test.regex.line)
+			if test.error && len(test.regex.matchedResults) != 3 {
+				t.Error(fmt.Sprintf("Expected to find 3 results, however, found %d.", len(test.regex.matchedResults)))
+			}
+			if test.error && test.regex.matchedResults[0] == "" {
 				t.Error("Expected to find 404 not found, found nothing.")
 			}
-			if test.regex.matchedResult != "" && !test.error {
-				t.Error("Expected regex to return empty result. Got:", test.regex.matchedResult)
+			if !test.error && len(test.regex.matchedResults) != 0 {
+				t.Error("Expected regex to return empty result. Got:", test.regex.matchedResults[0])
 			}
 		})
 	}
