@@ -12,8 +12,8 @@ import (
 	"sync"
 )
 
-// Returns the output of the external process.
-// If the output is not needed, use RunCmd
+// Executes an external process and returns its output.
+// If the returned output is not needed, use the RunCmd function instead , for better performance.
 func RunCmdOutput(config CmdConfig) (string, error) {
 	for k, v := range config.GetEnv() {
 		os.Setenv(k, v)
@@ -29,7 +29,7 @@ func RunCmdOutput(config CmdConfig) (string, error) {
 	return string(output), err
 }
 
-// Runs the external process and prints the output of the process.
+// Runs an external process and prints its output to stdout / stderr.
 func RunCmd(config CmdConfig) error {
 	for k, v := range config.GetEnv() {
 		os.Setenv(k, v)
@@ -165,21 +165,19 @@ func (reg *CmdOutputPattern) MaskCredentials() (string, error) {
 
 func (reg *CmdOutputPattern) Error() (string, error) {
 	fmt.Fprintf(os.Stderr, reg.line)
-	if len(reg.matchedResults) > 1 {
-		return "", errors.New(reg.ErrorMessage + strings.TrimSpace(reg.matchedResults[1]))
+	if len(reg.matchedResults) == 3 {
+		return "", errors.New(reg.matchedResults[2] + ":" + strings.TrimSpace(reg.matchedResults[1]))
 	}
-	return "", errors.New(reg.ErrorMessage)
+	return "", errors.New(fmt.Sprintf("Regex found the following values: %s", reg.matchedResults))
 }
 
 // RegExp - The regexp that the line will be searched upon.
 // matchedResults - The slice result that was found by the regex
 // line - The output line from the external process
-// ErrorMessage - Error message or part of the error that will be returned
 // ExecFunc - The function to execute
 type CmdOutputPattern struct {
 	RegExp         *regexp.Regexp
 	matchedResults []string
 	line           string
-	ErrorMessage   string
 	ExecFunc       func() (string, error)
 }
