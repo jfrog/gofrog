@@ -145,15 +145,6 @@ type CmdConfig interface {
 	GetErrWriter() io.WriteCloser
 }
 
-func GetRegExp(regex string) (*regexp.Regexp, error) {
-	regExp, err := regexp.Compile(regex)
-	if err != nil {
-		return nil, err
-	}
-
-	return regExp, nil
-}
-
 // RegExp - The regexp that the line will be searched upon.
 // MatchedResults - The slice result that was found by the regex
 // Line - The output line from the external process
