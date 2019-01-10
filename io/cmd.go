@@ -2,13 +2,11 @@ package io
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"regexp"
-	"strings"
 	"sync"
 )
 
@@ -91,9 +89,9 @@ func RunCmdWithOutputParser(config CmdConfig, regExpStruct ...*CmdOutputPattern)
 			for _, regExp := range regExpStruct {
 				matched := regExp.RegExp.Match([]byte(line))
 				if matched {
-					regExp.matchedResults = regExp.RegExp.FindStringSubmatch(line)
-					regExp.line = line
-					line, err = regExp.ExecFunc()
+					regExp.MatchedResults = regExp.RegExp.FindStringSubmatch(line)
+					regExp.Line = line
+					line, err = regExp.ExecFunc(regExp)
 					if err != nil {
 						errChan <- err
 					}
@@ -112,9 +110,9 @@ func RunCmdWithOutputParser(config CmdConfig, regExpStruct ...*CmdOutputPattern)
 			for _, regExp := range regExpStruct {
 				matched := regExp.RegExp.Match([]byte(line))
 				if matched {
-					regExp.matchedResults = regExp.RegExp.FindStringSubmatch(line)
-					regExp.line = line
-					line, scannerError = regExp.ExecFunc()
+					regExp.MatchedResults = regExp.RegExp.FindStringSubmatch(line)
+					regExp.Line = line
+					line, scannerError = regExp.ExecFunc(regExp)
 					if scannerError != nil {
 						errChan <- scannerError
 						break
@@ -156,28 +154,13 @@ func GetRegExp(regex string) (*regexp.Regexp, error) {
 	return regExp, nil
 }
 
-// Mask the credentials information from the line. The credentials are build as user:password
-// For example: http://user:password@127.0.0.1:8081/artifactory/path/to/repo
-func (reg *CmdOutputPattern) MaskCredentials() (string, error) {
-	splittedResult := strings.Split(reg.matchedResults[0], "//")
-	return strings.Replace(reg.line, reg.matchedResults[0], splittedResult[0]+"//***.***@", 1), nil
-}
-
-func (reg *CmdOutputPattern) Error() (string, error) {
-	fmt.Fprintf(os.Stderr, reg.line)
-	if len(reg.matchedResults) == 3 {
-		return "", errors.New(reg.matchedResults[2] + ":" + strings.TrimSpace(reg.matchedResults[1]))
-	}
-	return "", errors.New(fmt.Sprintf("Regex found the following values: %s", reg.matchedResults))
-}
-
 // RegExp - The regexp that the line will be searched upon.
-// matchedResults - The slice result that was found by the regex
-// line - The output line from the external process
+// MatchedResults - The slice result that was found by the regex
+// Line - The output line from the external process
 // ExecFunc - The function to execute
 type CmdOutputPattern struct {
 	RegExp         *regexp.Regexp
-	matchedResults []string
-	line           string
-	ExecFunc       func() (string, error)
+	MatchedResults []string
+	Line           string
+	ExecFunc       func(pattern *CmdOutputPattern) (string, error)
 }
