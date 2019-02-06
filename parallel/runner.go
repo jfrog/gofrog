@@ -2,6 +2,8 @@ package parallel
 
 import (
 	"errors"
+	"fmt"
+	"runtime/debug"
 	"sync"
 	"sync/atomic"
 )
@@ -33,19 +35,23 @@ type taskError struct {
 type runner struct {
 	tasks     chan *task
 	taskCount uint32
-
 	cancel      chan struct{}
 	maxParallel int
 	failFast    bool
-
+	recoverFromPanic bool
 	errors map[int]error
+}
+
+func NewRunner(maxParallel int, capacity uint, failFast bool) *runner{
+	return NewRunnerWithPanicRecovery(maxParallel, capacity, failFast, false)
 }
 
 // Create a new capacity runner - a runner we can add tasks to without blocking as long as the capacity is not reached.
 // maxParallel - number of go routines for task processing, maxParallel always will be a positive number.
 // acceptBeforeBlocking - number of tasks that can be added until a free processing goruntine is needed.
-// failFast - is set to true the will stop on first error.
-func NewRunner(maxParallel int, capacity uint, failFast bool) *runner {
+// failFast - if set to true the runner will stop on first error.
+// recoverFromPanic - if set to true, the runner will recover from panic that is ivoked from within the task function
+func NewRunnerWithPanicRecovery(maxParallel int, capacity uint, failFast, recoverFromPanic bool) *runner {
 	consumers := maxParallel
 	if consumers < 1 {
 		consumers = 1
@@ -58,6 +64,7 @@ func NewRunner(maxParallel int, capacity uint, failFast bool) *runner {
 		cancel:      make(chan struct{}),
 		maxParallel: consumers,
 		failFast:    failFast,
+		recoverFromPanic: recoverFromPanic,
 	}
 	r.errors = make(map[int]error)
 	return r
@@ -107,6 +114,14 @@ func (r *runner) Run() {
 		wg.Add(1)
 		go func(threadId int) {
 			defer wg.Done()
+			if r.recoverFromPanic {
+				defer func() {
+					if r := recover(); r != nil {
+						fmt.Println("Panic occurred during task execution", r)
+						debug.PrintStack()
+					}
+				}()
+			}
 			for t := range r.tasks {
 				e := t.run(threadId)
 				if e != nil {

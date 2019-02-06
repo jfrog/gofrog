@@ -12,6 +12,16 @@ import (
 var src = rand.NewSource(time.Now().UnixNano())
 var rnd = rand.New(src)
 
+// tests the recovery from panic (panic in task should not crash the whole process)
+func TestTaskHandlesPanic(t *testing.T) {
+	runner := NewRunnerWithPanicRecovery(1, 1, false, true)
+	runner.AddTask(func(x int) error {
+		panic("Panic")
+	})
+	runner.Done()
+	runner.Run()
+}
+
 func TestTask(t *testing.T) {
 	const count = 70
 	results := make(chan int, 100)
