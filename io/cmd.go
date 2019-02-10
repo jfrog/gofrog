@@ -2,6 +2,7 @@ package io
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -57,7 +58,7 @@ func RunCmd(config CmdConfig) error {
 // Executes the command and captures the output.
 // Analyze each line to match the provided regex.
 // Returns the complete stdout output of the command.
-func RunCmdWithOutputParser(config CmdConfig, regExpStruct ...*CmdOutputPattern) (string, error) {
+func RunCmdWithOutputParser(config CmdConfig, shouldFailOnError bool, regExpStruct ...*CmdOutputPattern) (string, error) {
 	var wg sync.WaitGroup
 	for k, v := range config.GetEnv() {
 		os.Setenv(k, v)
@@ -97,8 +98,10 @@ func RunCmdWithOutputParser(config CmdConfig, regExpStruct ...*CmdOutputPattern)
 					}
 				}
 			}
-			fmt.Println(line)
-			stdoutOutput += line + "\n"
+			if line != "" {
+				fmt.Println(line)
+				stdoutOutput += line + "\n"
+			}
 		}
 		wg.Done()
 	}()
@@ -118,8 +121,16 @@ func RunCmdWithOutputParser(config CmdConfig, regExpStruct ...*CmdOutputPattern)
 						break
 					}
 				}
+
+				if shouldFailOnError {
+					scannerError = errors.New(line)
+					errChan <- scannerError
+					break
+				}
 			}
-			fmt.Fprintf(os.Stderr, line+"\n")
+			if line != "" {
+				fmt.Fprintf(os.Stderr, line+"\n")
+			}
 			if scannerError != nil {
 				break
 			}
