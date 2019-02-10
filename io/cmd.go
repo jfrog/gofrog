@@ -57,7 +57,7 @@ func RunCmd(config CmdConfig) error {
 // Executes the command and captures the output.
 // Analyze each line to match the provided regex.
 // Returns the complete stdout output of the command.
-func RunCmdWithOutputParser(config CmdConfig, regExpStruct ...*CmdOutputPattern) (string, error) {
+func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdOutputPattern) (out string, exitOk bool, err error) {
 	var wg sync.WaitGroup
 	for k, v := range config.GetEnv() {
 		os.Setenv(k, v)
@@ -66,22 +66,21 @@ func RunCmdWithOutputParser(config CmdConfig, regExpStruct ...*CmdOutputPattern)
 	cmd := config.GetCmd()
 	cmdReader, err := cmd.StdoutPipe()
 	if err != nil {
-		return "", err
+		return
 	}
 	defer cmdReader.Close()
 	scanner := bufio.NewScanner(cmdReader)
 	cmdReaderStderr, err := cmd.StderrPipe()
 	if err != nil {
-		return "", err
+		return
 	}
 	defer cmdReaderStderr.Close()
 	scannerStderr := bufio.NewScanner(cmdReaderStderr)
 	err = cmd.Start()
 	if err != nil {
-		return "", err
+		return
 	}
 	errChan := make(chan error)
-	var stdoutOutput string
 	wg.Add(1)
 	go func() {
 		for scanner.Scan() {
@@ -97,8 +96,10 @@ func RunCmdWithOutputParser(config CmdConfig, regExpStruct ...*CmdOutputPattern)
 					}
 				}
 			}
-			fmt.Println(line)
-			stdoutOutput += line + "\n"
+			if prompt {
+				fmt.Println(line)
+			}
+			out += line + "\n"
 		}
 		wg.Done()
 	}()
@@ -119,7 +120,9 @@ func RunCmdWithOutputParser(config CmdConfig, regExpStruct ...*CmdOutputPattern)
 					}
 				}
 			}
-			fmt.Fprintf(os.Stderr, line+"\n")
+			if prompt {
+				fmt.Fprintf(os.Stderr, line+"\n")
+			}
 			if scannerError != nil {
 				break
 			}
@@ -132,10 +135,20 @@ func RunCmdWithOutputParser(config CmdConfig, regExpStruct ...*CmdOutputPattern)
 		close(errChan)
 	}()
 
-	for err := range errChan {
-		return stdoutOutput, err
+	for err = range errChan {
+		return
 	}
-	return stdoutOutput, nil
+
+	err = cmd.Wait()
+	if err != nil {
+		return
+	}
+	exitOk = true
+	if _, ok := err.(*exec.ExitError); ok {
+		// The program has exited with an exit code != 0
+		exitOk = false
+	}
+	return
 }
 
 type CmdConfig interface {
