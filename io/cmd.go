@@ -57,7 +57,7 @@ func RunCmd(config CmdConfig) error {
 // Executes the command and captures the output.
 // Analyze each line to match the provided regex.
 // Returns the complete stdout output of the command.
-func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdOutputPattern) (out string, exitOk bool, err error) {
+func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdOutputPattern) (stdOut string, errorOut string, exitOk bool, err error) {
 	var wg sync.WaitGroup
 	for k, v := range config.GetEnv() {
 		os.Setenv(k, v)
@@ -99,7 +99,7 @@ func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdO
 			if prompt {
 				fmt.Println(line)
 			}
-			out += line + "\n"
+			stdOut += line + "\n"
 		}
 		wg.Done()
 	}()
@@ -123,6 +123,7 @@ func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdO
 			if prompt {
 				fmt.Fprintf(os.Stderr, line+"\n")
 			}
+			errorOut += line + "\n"
 			if scannerError != nil {
 				break
 			}
