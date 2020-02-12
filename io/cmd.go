@@ -2,6 +2,7 @@ package io
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -51,7 +52,15 @@ func RunCmd(config CmdConfig) error {
 	if err != nil {
 		return err
 	}
-	return cmd.Wait()
+	err = cmd.Wait()
+	// If the command fails to run or doesn't complete successfully ExitError is returned.
+	// We would like to return a regular error instead of ExitError,
+	// because some frameworks (such as codegangsta used by JFrog CLI) automatically exit when this error is returned.
+	if _, ok := err.(*exec.ExitError); ok {
+		err = errors.New(err.Error())
+	}
+
+	return err
 }
 
 // Executes the command and captures the output.
