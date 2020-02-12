@@ -53,8 +53,9 @@ func RunCmd(config CmdConfig) error {
 		return err
 	}
 	err = cmd.Wait()
-	// If the command fails to run or doesn't complete successfully *ExitError is returned.
-	// We want to avoid the current run to exit ass well, so we will return new error with the original error message.
+	// If the command fails to run or doesn't complete successfully ExitError is returned.
+	// We would like to return a regular error instead of ExitError,
+	// because some frameworks (such as codegangsta used by JFrog CLI) automatically exit when this error is returned.
 	if _, ok := err.(*exec.ExitError); ok {
 		err = errors.New(err.Error())
 	}
