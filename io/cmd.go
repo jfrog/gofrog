@@ -2,6 +2,7 @@ package io
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -51,7 +52,14 @@ func RunCmd(config CmdConfig) error {
 	if err != nil {
 		return err
 	}
-	return cmd.Wait()
+	err = cmd.Wait()
+	// If the command fails to run or doesn't complete successfully *ExitError is returned.
+	// We want to avoid the current run to exit ass well, so we will return new error with the original error message.
+	if _, ok := err.(*exec.ExitError); ok {
+		err = errors.New(err.Error())
+	}
+
+	return err
 }
 
 // Executes the command and captures the output.
