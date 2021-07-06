@@ -106,7 +106,7 @@ func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdO
 				}
 			}
 			if prompt {
-				fmt.Println(line)
+				fmt.Fprintf(os.Stderr, line+"\n")
 			}
 			stdOut += line + "\n"
 		}
