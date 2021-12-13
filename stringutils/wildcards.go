@@ -28,7 +28,7 @@ func WildcardPatternToRegExp(localPath string) string {
 
 func EscapeSpecialChars(path string) string {
 	// We don't replace other special characters (like parenthesis) because they're used in the placeholders logic of the JFrog CLI.
-	var specialChars = []string{".", "^", "$", "+"}
+	var specialChars = []string{".", "^", "$", "+", "[", "]"}
 	for _, char := range specialChars {
 		path = strings.Replace(path, char, "\\"+char, -1)
 	}
