@@ -35,8 +35,8 @@ type runner struct {
 	maxParallel int
 	failFast    bool
 
-	idle     []bool
-	lastIdle []string
+	idle       []bool
+	lastActive []string
 
 	errors map[int]error
 }
@@ -59,7 +59,7 @@ func NewRunner(maxParallel int, capacity uint, failFast bool) *runner {
 		maxParallel: consumers,
 		failFast:    failFast,
 		idle:        make([]bool, consumers),
-		lastIdle:    make([]string, consumers),
+		lastActive:  make([]string, consumers),
 	}
 	r.errors = make(map[int]error)
 	return r
@@ -125,7 +125,7 @@ func (r *runner) Run() {
 					}
 				}
 				r.idle[threadId] = true
-				r.lastIdle[threadId] = strconv.FormatInt(time.Now().Unix(), 10)
+				r.lastActive[threadId] = strconv.FormatInt(time.Now().Unix(), 10)
 			}
 		}(i)
 	}
@@ -162,7 +162,7 @@ func (r *runner) DoneWhenAllIdle(idleThresholdSeconds int) error {
 				break
 			}
 
-			idleTimestamp, err := strconv.ParseInt(r.lastIdle[i], 10, 64)
+			idleTimestamp, err := strconv.ParseInt(r.lastActive[i], 10, 64)
 			if err != nil {
 				return errors.New("unexpected idle timestamp on consumer. err: " + err.Error())
 			}
