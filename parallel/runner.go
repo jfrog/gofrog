@@ -2,8 +2,10 @@ package parallel
 
 import (
 	"errors"
+	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 type Runner interface {
@@ -25,11 +27,6 @@ type task struct {
 	num     uint32
 }
 
-type taskError struct {
-	num int
-	err error
-}
-
 type runner struct {
 	tasks     chan *task
 	taskCount uint32
@@ -37,6 +34,9 @@ type runner struct {
 	cancel      chan struct{}
 	maxParallel int
 	failFast    bool
+
+	idle       []bool
+	lastActive []string
 
 	errors map[int]error
 }
@@ -58,6 +58,8 @@ func NewRunner(maxParallel int, capacity uint, failFast bool) *runner {
 		cancel:      make(chan struct{}),
 		maxParallel: consumers,
 		failFast:    failFast,
+		idle:        make([]bool, consumers),
+		lastActive:  make([]string, consumers),
 	}
 	r.errors = make(map[int]error)
 	return r
@@ -108,6 +110,7 @@ func (r *runner) Run() {
 		go func(threadId int) {
 			defer wg.Done()
 			for t := range r.tasks {
+				r.idle[threadId] = false
 				e := t.run(threadId)
 				if e != nil {
 					if t.onError != nil {
@@ -121,6 +124,8 @@ func (r *runner) Run() {
 						break
 					}
 				}
+				r.idle[threadId] = true
+				r.lastActive[threadId] = strconv.FormatInt(time.Now().Unix(), 10)
 			}
 		}(i)
 	}
@@ -144,4 +149,35 @@ func (r *runner) Cancel() {
 // Returns a map of errors keyed by the task number
 func (r *runner) Errors() map[int]error {
 	return r.errors
+}
+
+// Define the work as done when all consumers are idle for idleThresholdSeconds.
+// The function will wait until all consumers are idle.
+// Can be run by the producer as a go routine right after starting to produce.
+// CAUTION - Might panic if no task is added on the initial idleThresholdSeconds.
+func (r *runner) DoneWhenAllIdle(idleThresholdSeconds int) error {
+	for {
+		time.Sleep(time.Duration(idleThresholdSeconds) * time.Second)
+		for i := 0; i < r.maxParallel; i++ {
+			if !r.idle[i] {
+				break
+			}
+
+			idleTimestamp, err := strconv.ParseInt(r.lastActive[i], 10, 64)
+			if err != nil {
+				return errors.New("unexpected idle timestamp on consumer. err: " + err.Error())
+			}
+
+			idleTime := time.Unix(idleTimestamp, 0)
+			if time.Now().Sub(idleTime).Seconds() < float64(idleThresholdSeconds) {
+				break
+			}
+
+			// All consumers are idle for the required time.
+			if i == r.maxParallel-1 {
+				close(r.tasks)
+				return nil
+			}
+		}
+	}
 }
