@@ -152,8 +152,9 @@ func (r *runner) Errors() map[int]error {
 }
 
 // Define the work as done when all consumers are idle for idleThresholdSeconds.
+// The function will wait until all consumers are idle.
 // Can be run by the producer as a go routine right after starting to produce.
-// CAUTION - Might panic if tasks are taking more than idleThresholdSeconds to be produced.
+// CAUTION - Might panic if no task is added on the initial idleThresholdSeconds.
 func (r *runner) DoneWhenAllIdle(idleThresholdSeconds int) error {
 	for {
 		time.Sleep(time.Duration(idleThresholdSeconds) * time.Second)
@@ -168,8 +169,7 @@ func (r *runner) DoneWhenAllIdle(idleThresholdSeconds int) error {
 			}
 
 			idleTime := time.Unix(idleTimestamp, 0)
-			now := time.Now()
-			if now.Sub(idleTime).Seconds() < float64(idleThresholdSeconds) {
+			if time.Now().Sub(idleTime).Seconds() < float64(idleThresholdSeconds) {
 				break
 			}
 
