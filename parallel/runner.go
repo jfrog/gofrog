@@ -31,14 +31,20 @@ type runner struct {
 	tasks     chan *task
 	taskCount uint32
 
-	cancel      chan struct{}
-	maxParallel int
-	failFast    bool
+	cancel             chan struct{}
+	cancelOnce         sync.Once
+	maxParallel        int
+	failFast           bool
+	threadsWaitGroup   sync.WaitGroup
+	threadCount        uint32
+	runningThreads     int
+	runningThreadsLock sync.Mutex
 
-	idle       []bool
-	lastActive []string
+	idle       sync.Map
+	lastActive sync.Map
 
-	errors map[int]error
+	errors     map[int]error
+	errorsLock sync.Mutex
 }
 
 // Create a new capacity runner - a runner we can add tasks to without blocking as long as the capacity is not reached.
@@ -58,8 +64,6 @@ func NewRunner(maxParallel int, capacity uint, failFast bool) *runner {
 		cancel:      make(chan struct{}),
 		maxParallel: consumers,
 		failFast:    failFast,
-		idle:        make([]bool, consumers),
-		lastActive:  make([]string, consumers),
 	}
 	r.errors = make(map[int]error)
 	return r
@@ -99,37 +103,13 @@ func (r *runner) addTask(t TaskFunc, errorHandler OnErrorFunc) (int, error) {
 }
 
 // Run r.maxParallel go routines in order to consume all the tasks
-// If a task returns an error and failFast is on all goroutines will stop and a the runner will be notified.
+// If a task returns an error and failFast is on all goroutines will stop and the runner will be notified.
 // Notice: Run() is a blocking operation.
 func (r *runner) Run() {
-	var wg sync.WaitGroup
-	var m sync.Mutex
-	var once sync.Once
 	for i := 0; i < r.maxParallel; i++ {
-		wg.Add(1)
-		go func(threadId int) {
-			defer wg.Done()
-			for t := range r.tasks {
-				r.idle[threadId] = false
-				e := t.run(threadId)
-				if e != nil {
-					if t.onError != nil {
-						t.onError(e)
-					}
-					m.Lock()
-					r.errors[int(t.num)] = e
-					m.Unlock()
-					if r.failFast {
-						once.Do(r.Cancel)
-						break
-					}
-				}
-				r.idle[threadId] = true
-				r.lastActive[threadId] = strconv.FormatInt(time.Now().Unix(), 10)
-			}
-		}(i)
+		r.addThread()
 	}
-	wg.Wait()
+	r.threadsWaitGroup.Wait()
 }
 
 // The producer notifies that no more tasks will be produced.
@@ -137,13 +117,18 @@ func (r *runner) Done() {
 	close(r.tasks)
 }
 
+// Cancel stops the Runner from getting new tasks and empties the tasks queue.
+// No new tasks will be executed, and tasks that already started will continue running and won't be interrupted.
+// If this Runner was already cancelled, then this function will do nothing.
 func (r *runner) Cancel() {
-	// No more adding tasks
-	close(r.cancel)
-	// Consume all tasks left
-	for len(r.tasks) > 0 {
-		<-r.tasks
-	}
+	r.cancelOnce.Do(func() {
+		// No more adding tasks
+		close(r.cancel)
+		// Consume all tasks left
+		for len(r.tasks) > 0 {
+			<-r.tasks
+		}
+	})
 }
 
 // Returns a map of errors keyed by the task number
@@ -158,26 +143,112 @@ func (r *runner) Errors() map[int]error {
 func (r *runner) DoneWhenAllIdle(idleThresholdSeconds int) error {
 	for {
 		time.Sleep(time.Duration(idleThresholdSeconds) * time.Second)
-		for i := 0; i < r.maxParallel; i++ {
-			if !r.idle[i] {
-				break
+		allIdle := true
+		var e error
+		r.idle.Range(func(key, value interface{}) bool {
+			threadId, ok := key.(int)
+			if !ok {
+				e = errors.New("thread ID must be a number")
+				// this will break iteration
+				return false
+			}
+			threadIdle, ok := value.(bool)
+			if !ok {
+				e = errors.New("thread idle value must be a boolean")
+				// this will break iteration
+				return false
 			}
 
-			idleTimestamp, err := strconv.ParseInt(r.lastActive[i], 10, 64)
+			if !threadIdle {
+				allIdle = false
+				return false
+			}
+
+			lastActiveValue, _ := r.lastActive.Load(threadId)
+			threadLastActive, _ := lastActiveValue.(string)
+			idleTimestamp, err := strconv.ParseInt(threadLastActive, 10, 64)
 			if err != nil {
-				return errors.New("unexpected idle timestamp on consumer. err: " + err.Error())
+				e = errors.New("unexpected idle timestamp on consumer. err: " + err.Error())
+				return false
 			}
 
 			idleTime := time.Unix(idleTimestamp, 0)
 			if time.Now().Sub(idleTime).Seconds() < float64(idleThresholdSeconds) {
-				break
+				allIdle = false
+				return false
 			}
+			return true
+		})
+		if e != nil {
+			return e
+		}
 
-			// All consumers are idle for the required time.
-			if i == r.maxParallel-1 {
-				close(r.tasks)
-				return nil
-			}
+		// All consumers are idle for the required time.
+		if allIdle {
+			close(r.tasks)
+			return nil
 		}
 	}
+}
+
+func (r *runner) RunningThreads() int {
+	return r.runningThreads
+}
+
+func (r *runner) SetMaxParallel(newVal int) {
+	if newVal < 1 {
+		newVal = 1
+	}
+	if newVal == r.maxParallel {
+		return
+	}
+	if newVal > r.maxParallel {
+		for i := 0; i < newVal-r.maxParallel; i++ {
+			r.addThread()
+		}
+	}
+	r.maxParallel = newVal
+}
+
+func (r *runner) addThread() {
+	r.threadsWaitGroup.Add(1)
+	nextThreadId := atomic.AddUint32(&r.threadCount, 1) - 1
+	go func(threadId int) {
+		defer r.threadsWaitGroup.Done()
+
+		r.runningThreadsLock.Lock()
+		r.runningThreads++
+		r.runningThreadsLock.Unlock()
+
+		for t := range r.tasks {
+			r.idle.Store(threadId, false)
+			e := t.run(threadId)
+			if e != nil {
+				if t.onError != nil {
+					t.onError(e)
+				}
+
+				r.errorsLock.Lock()
+				r.errors[int(t.num)] = e
+				r.errorsLock.Unlock()
+
+				if r.failFast {
+					r.Cancel()
+					break
+				}
+			}
+			r.idle.Store(threadId, true)
+			r.lastActive.Store(threadId, strconv.FormatInt(time.Now().Unix(), 10))
+
+			r.runningThreadsLock.Lock()
+			if r.runningThreads > r.maxParallel {
+				r.runningThreads--
+				r.runningThreadsLock.Unlock()
+				r.idle.Delete(threadId)
+				r.lastActive.Delete(threadId)
+				break
+			}
+			r.runningThreadsLock.Unlock()
+		}
+	}(int(nextThreadId))
 }
