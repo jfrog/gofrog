@@ -224,7 +224,7 @@ func (r *runner) SetMaxParallel(newVal int) {
 			r.addThread()
 		}
 	}
-	// In case the number of threads is reduced, we set the new value to maxParallel, and each thread the finishes his
+	// In case the number of threads is reduced, we set the new value to maxParallel, and each thread that finishes his
 	// task checks if there are more open threads than maxParallel. If so, it kills itself.
 	r.maxParallel = newVal
 }
