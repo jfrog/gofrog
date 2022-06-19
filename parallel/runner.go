@@ -28,22 +28,36 @@ type task struct {
 }
 
 type runner struct {
-	tasks     chan *task
+	// Tasks waiting to be executed.
+	tasks chan *task
+	// Tasks counter, used to give each task an identifier (task.num).
 	taskCount uint32
 
-	cancel             chan struct{}
-	cancelOnce         sync.Once
-	maxParallel        int
-	failFast           bool
-	threadsWaitGroup   sync.WaitGroup
-	threadCount        uint32
-	runningThreads     int
+	// A channel that is closed when the runner is cancelled.
+	cancel chan struct{}
+	// Used to make sure the cancel channel is closed only once.
+	cancelOnce sync.Once
+	// The maximum number of threads running in parallel.
+	maxParallel int
+	// If true, the runner will be cancelled on the first error thrown from a task.
+	failFast bool
+	// A WaitGroup that waits for all the threads to close.
+	threadsWaitGroup sync.WaitGroup
+	// Threads counter, used to give each thread an identifier (threadId).
+	threadCount uint32
+	// The number of open threads.
+	runningThreads int
+	// A lock on runningThreads.
 	runningThreadsLock sync.Mutex
 
-	idle       sync.Map
+	// A map of all open threads with a boolean indicating whether they're idle (open threads that do not run any task at the moment).
+	idle sync.Map
+	// A map of all open threads with the last time they ended a task.
 	lastActive sync.Map
 
-	errors     map[int]error
+	// A map of errors keyed by threadId.
+	errors map[int]error
+	// A lock on the errors map.
 	errorsLock sync.Mutex
 }
 
@@ -119,7 +133,7 @@ func (r *runner) Done() {
 
 // Cancel stops the Runner from getting new tasks and empties the tasks queue.
 // No new tasks will be executed, and tasks that already started will continue running and won't be interrupted.
-// If this Runner was already cancelled, then this function will do nothing.
+// If this Runner is already cancelled, then this function will do nothing.
 func (r *runner) Cancel() {
 	r.cancelOnce.Do(func() {
 		// No more adding tasks
@@ -145,17 +159,18 @@ func (r *runner) DoneWhenAllIdle(idleThresholdSeconds int) error {
 		time.Sleep(time.Duration(idleThresholdSeconds) * time.Second)
 		allIdle := true
 		var e error
+		// Iterate over all open threads to check if all of them are idle.
 		r.idle.Range(func(key, value interface{}) bool {
 			threadId, ok := key.(int)
 			if !ok {
 				e = errors.New("thread ID must be a number")
-				// this will break iteration
+				// This will break the iteration.
 				return false
 			}
 			threadIdle, ok := value.(bool)
 			if !ok {
 				e = errors.New("thread idle value must be a boolean")
-				// this will break iteration
+				// This will break the iteration.
 				return false
 			}
 
@@ -173,6 +188,7 @@ func (r *runner) DoneWhenAllIdle(idleThresholdSeconds int) error {
 			}
 
 			idleTime := time.Unix(idleTimestamp, 0)
+			// Check if the time passed since the thread was recently active is shorter than idleThresholdSeconds.
 			if time.Now().Sub(idleTime).Seconds() < float64(idleThresholdSeconds) {
 				allIdle = false
 				return false
@@ -191,6 +207,7 @@ func (r *runner) DoneWhenAllIdle(idleThresholdSeconds int) error {
 	}
 }
 
+// RunningThreads returns the number of open threads (including idle threads).
 func (r *runner) RunningThreads() int {
 	return r.runningThreads
 }
@@ -207,6 +224,8 @@ func (r *runner) SetMaxParallel(newVal int) {
 			r.addThread()
 		}
 	}
+	// In case the number of threads is reduced, we set the new value to maxParallel, and each thread the finishes his
+	// task checks if there are more open threads than maxParallel. If so, it kills itself.
 	r.maxParallel = newVal
 }
 
@@ -220,14 +239,18 @@ func (r *runner) addThread() {
 		r.runningThreads++
 		r.runningThreadsLock.Unlock()
 
+		// Keep on taking tasks from the queue.
 		for t := range r.tasks {
 			r.idle.Store(threadId, false)
+
+			// Run the task.
 			e := t.run(threadId)
 			if e != nil {
 				if t.onError != nil {
 					t.onError(e)
 				}
 
+				// Save the error in the errors map.
 				r.errorsLock.Lock()
 				r.errors[int(t.num)] = e
 				r.errorsLock.Unlock()
@@ -238,9 +261,11 @@ func (r *runner) addThread() {
 				}
 			}
 			r.idle.Store(threadId, true)
+			// Save the current time as the thread's last active time.
 			r.lastActive.Store(threadId, strconv.FormatInt(time.Now().Unix(), 10))
 
 			r.runningThreadsLock.Lock()
+			// If there are more open threads than maxParallel, then this thread will be closed.
 			if r.runningThreads > r.maxParallel {
 				r.runningThreads--
 				r.runningThreadsLock.Unlock()
