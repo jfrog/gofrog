@@ -15,6 +15,8 @@ type Runner interface {
 	Done()
 	Cancel()
 	Errors() map[int]error
+	RunningThreads() int
+	SetMaxParallel(int)
 }
 
 type TaskFunc func(int) error
