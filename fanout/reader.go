@@ -24,11 +24,6 @@ func (f ConsumerFunc) Read(p []byte) error {
 	return f(p)
 }
 
-type progressiveReaderResult struct {
-	data interface{}
-	pos  int
-}
-
 func NewReader(reader io.Reader, consumers ...Consumer) *Reader {
 	procLen := len(consumers)
 	pipeReaders := make([]*io.PipeReader, procLen)
@@ -40,8 +35,8 @@ func NewReader(reader io.Reader, consumers ...Consumer) *Reader {
 		pipeWriters[i] = pw
 	}
 	multiWriter := io.MultiWriter(toWriters(pipeWriters)...)
-	return &Reader{reader:                  reader, consumers: consumers, pipeReaders: pipeReaders,
-		pipeWriters:                    pipeWriters, multiWriter: multiWriter}
+	return &Reader{reader: reader, consumers: consumers, pipeReaders: pipeReaders,
+		pipeWriters: pipeWriters, multiWriter: multiWriter}
 }
 
 func (r *Reader) Read(p []byte) (int, error) {

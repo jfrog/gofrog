@@ -112,7 +112,7 @@ func (r *runner) addTask(t TaskFunc, errorHandler OnErrorFunc) (int, error) {
 
 	select {
 	case <-r.cancel:
-		return -1, errors.New("Runner stopped!")
+		return -1, errors.New("runner stopped")
 	default:
 		r.tasks <- task
 		return int(task.num), nil
@@ -192,7 +192,7 @@ func (r *runner) DoneWhenAllIdle(idleThresholdSeconds int) error {
 
 			idleTime := time.Unix(idleTimestamp, 0)
 			// Check if the time passed since the thread was recently active is shorter than idleThresholdSeconds.
-			if time.Now().Sub(idleTime).Seconds() < float64(idleThresholdSeconds) {
+			if time.Since(idleTime).Seconds() < float64(idleThresholdSeconds) {
 				allIdle = false
 				return false
 			}

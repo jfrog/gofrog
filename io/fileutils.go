@@ -21,6 +21,8 @@ type RandFile struct {
 const buflen = 4096
 
 var src = rand.NewSource(time.Now().UnixNano())
+
+// #nosec G404 - No cryptographic level encription is needed in random file
 var rnd = rand.New(src)
 
 func CreateRandomLenFile(maxLen int, filesDir string, prefix string) string {
@@ -34,24 +36,31 @@ func CreateRandomLenFile(maxLen int, filesDir string, prefix string) string {
 	defer created.Close()
 	//Check that the files were created with expected len
 	if created.Info.Size() != int64(len) {
-		panic(fmt.Errorf("Unexpected file length. Expected: %d. Got %d.", created.Info.Size(), len))
+		panic(fmt.Errorf("unexpected file length. Expected: %d, Got %d", created.Info.Size(), len))
 	}
 	return fname
 }
 
-func CreateRandFile(path string, len int) (*RandFile, error) {
+func CreateRandFile(path string, len int) (file *RandFile, err error) {
 	f, err := os.Create(path)
-	defer f.Close()
-
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		closeErr := f.Close()
+		if err == nil {
+			err = closeErr
+		}
+	}()
 
 	w := bufio.NewWriter(f)
 	buf := make([]byte, buflen)
 
 	for i := 0; i <= len; i += buflen {
-		cr.Read(buf)
+		_, err := cr.Read(buf)
+		if err != nil {
+			return nil, err
+		}
 		var wbuflen = buflen
 		if i+buflen >= len {
 			wbuflen = len - i
@@ -62,9 +71,10 @@ func CreateRandFile(path string, len int) (*RandFile, error) {
 			return nil, err
 		}
 	}
-	w.Flush()
-
-	//        if stat, err := file.Stat(); err == nil {
+	err = w.Flush()
+	if err != nil {
+		return nil, err
+	}
 
 	if info, err := f.Stat(); err != nil {
 		return nil, err
@@ -176,6 +186,7 @@ func evalPathOfSymlink(path string) (string, error) {
 // a sorted list of directory entries.
 // The same as path/filepath readDirNames function
 func readDirNames(dirname string) ([]string, error) {
+	// #nosec G304 - False positive
 	f, err := os.Open(dirname)
 	if err != nil {
 		return nil, err

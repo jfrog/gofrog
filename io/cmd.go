@@ -15,7 +15,9 @@ import (
 // If the returned output is not needed, use the RunCmd function instead , for better performance.
 func RunCmdOutput(config CmdConfig) (string, error) {
 	for k, v := range config.GetEnv() {
-		os.Setenv(k, v)
+		if err := os.Setenv(k, v); err != nil {
+			return "", err
+		}
 	}
 	cmd := config.GetCmd()
 	if config.GetErrWriter() == nil {
@@ -31,7 +33,9 @@ func RunCmdOutput(config CmdConfig) (string, error) {
 // Runs an external process and prints its output to stdout / stderr.
 func RunCmd(config CmdConfig) error {
 	for k, v := range config.GetEnv() {
-		os.Setenv(k, v)
+		if err := os.Setenv(k, v); err != nil {
+			return err
+		}
 	}
 
 	cmd := config.GetCmd()
@@ -69,7 +73,9 @@ func RunCmd(config CmdConfig) error {
 func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdOutputPattern) (stdOut string, errorOut string, exitOk bool, err error) {
 	var wg sync.WaitGroup
 	for k, v := range config.GetEnv() {
-		os.Setenv(k, v)
+		if err = os.Setenv(k, v); err != nil {
+			return
+		}
 	}
 
 	cmd := config.GetCmd()
