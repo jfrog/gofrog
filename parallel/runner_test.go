@@ -1,7 +1,6 @@
 package parallel
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -29,9 +28,8 @@ func TestTask(t *testing.T) {
 		runner.AddTask(func(i int) error {
 			results <- x
 			time.Sleep(time.Millisecond * time.Duration(rnd.Intn(50)))
-			fmt.Printf("Run: %d\n", x)
 			if float64(x) > math.Floor(float64(count)/2) {
-				return errors.New(fmt.Sprintf("Second half value %d not counted", x))
+				return fmt.Errorf("Second half value %d not counted", x)
 			}
 			return nil
 		})
@@ -52,8 +50,6 @@ func TestTask(t *testing.T) {
 
 	var errorsTotal int
 	for k, v := range errs {
-		fmt.Printf("err %v: %v\n", k, v)
-
 		if v != nil {
 			errorsTotal += k
 		}
@@ -64,7 +60,4 @@ func TestTask(t *testing.T) {
 	if errorsTotal == 0 {
 		t.Error("Unexpected 0 errs total")
 	}
-
-	fmt.Println("expectedTotal=", expectedTotal)
-	fmt.Println("expectedErrorTotal=", expectedErrorTotal)
 }

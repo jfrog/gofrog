@@ -1,15 +1,15 @@
 package fanout
 
 import (
-	"testing"
-	"io"
 	"bytes"
+	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
-	"io/ioutil"
-	"crypto/sha1"
 	"errors"
+	"io"
+	"io/ioutil"
 	"strings"
+	"testing"
 )
 
 const input = "yogreshobuddy!"

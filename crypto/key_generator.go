@@ -1,13 +1,12 @@
 package crypto
 
 import (
- 	"crypto/rand"
-	"fmt"
+	"crypto/rand"
 	"crypto/sha256"
-	"errors"
 	"encoding/hex"
+	"errors"
+	"fmt"
 )
-
 
 func GenerateRandomKeyString(keySize int) (string, error) {
 	b, err := generateRandomBytes(keySize)
@@ -26,13 +25,12 @@ func generateRandomBytes(n int) ([]byte, error) {
 }
 
 // keyId is first 6 chars of hashed(sha256) signing key
-func GenerateKeyId(key string) (string,error){
+func GenerateKeyId(key string) (string, error) {
 	if len(key) == 0 {
-		return "",errors.New("Signing key is empty")
+		return "", errors.New("signing key is empty")
 	}
 	h := sha256.New()
 	h.Write([]byte(key))
-	sha256 :=  fmt.Sprintf("%x", (h.Sum(nil)))
-	return sha256[:6],nil
+	sha256 := fmt.Sprintf("%x", (h.Sum(nil)))
+	return sha256[:6], nil
 }
-

@@ -1,7 +1,6 @@
 package parallel
 
 import (
-	"errors"
 	"fmt"
 	"math/rand"
 	"strconv"
@@ -197,7 +196,6 @@ func produceTasks(runner *runner, results chan int, errorsQueue *ErrorsQueue, ta
 		}
 		expectedTotal += i
 	}
-	fmt.Println("Runner done")
 	return expectedTotal
 }
 
@@ -205,7 +203,6 @@ func createSuccessfulFlowTaskFunc(num int, result chan int) TaskFunc {
 	return func(threadId int) error {
 		result <- num
 		time.Sleep(time.Millisecond * time.Duration(random.Intn(50)))
-		fmt.Printf("[Thread %d] %d\n", threadId, num)
 		return nil
 	}
 }
@@ -213,11 +210,10 @@ func createSuccessfulFlowTaskFunc(num int, result chan int) TaskFunc {
 func createTaskWithErrorFunc(num int, result chan int) TaskFunc {
 	return func(threadId int) error {
 		if num > 50 {
-			return errors.New(fmt.Sprintf("num: %d, above 50 going to stop.", num))
+			return fmt.Errorf("num: %d, above 50 going to stop.", num)
 		}
 		result <- num
 		time.Sleep(time.Millisecond * time.Duration(random.Intn(50)))
-		fmt.Printf("[Thread %d] %d\n", threadId, num)
 		return nil
 	}
 }
@@ -225,11 +221,10 @@ func createTaskWithErrorFunc(num int, result chan int) TaskFunc {
 func createTaskWithIntAsErrorFunc(num int, result chan int) TaskFunc {
 	return func(threadId int) error {
 		if num > 50 {
-			return errors.New(fmt.Sprintf("%d", num))
+			return fmt.Errorf("%d", num)
 		}
 		result <- num
 		time.Sleep(time.Millisecond * time.Duration(random.Intn(50)))
-		fmt.Printf("[Thread %d] %d\n", threadId, num)
 		return nil
 	}
 }

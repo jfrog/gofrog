@@ -47,7 +47,6 @@ func (c *cacheBase) Add(key string, value interface{}) {
 	if c.Size != 0 && c.ll.Len() > c.Size {
 		c.RemoveOldest()
 	}
-	return
 }
 
 func (c *cacheBase) Get(key string) (value interface{}, ok bool) {

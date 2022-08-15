@@ -114,10 +114,10 @@ func TestPurge(t *testing.T) {
 }
 
 func TestExpiry(t *testing.T) {
-	c := New(3, WithExpiry(100*time.Millisecond))
+	c := New(3, WithExpiry(time.Second))
 	c.Add("e1", 1)
 	c.Add("e2", 2)
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 	c.Add("e3", 3)
 	if _, ok := c.Get("e1"); !ok {
 		t.Fatal("Expected to get value for e1 but it was not found")
@@ -132,12 +132,12 @@ func TestExpiry(t *testing.T) {
 	if l != 3 {
 		t.Fatalf("Expected length to be 3 but got %d", l)
 	}
-	time.Sleep(60 * time.Millisecond)
+	time.Sleep(700 * time.Millisecond)
 	if _, ok := c.Get("e1"); ok {
-		t.Fatal("Expected not to get value for e2 but it was found")
+		t.Fatal("Expected not to get value for e1 but it was found")
 	}
 	if _, ok := c.Get("e2"); ok {
-		t.Fatal("Expected not to get value for e3 but it was found")
+		t.Fatal("Expected not to get value for e2 but it was found")
 	}
 	if _, ok := c.Get("e3"); !ok {
 		t.Fatal("Expected to get value for e3 but it was not found")

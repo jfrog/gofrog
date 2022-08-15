@@ -1,10 +1,10 @@
 package fanout
 
 import (
-	"io"
-	"github.com/pkg/errors"
-	"sync"
 	"fmt"
+	"github.com/pkg/errors"
+	"io"
+	"sync"
 )
 
 //A reader that emits its read to multiple consumers using a ReadAll(p []byte) ([]interface{}, error) func
@@ -39,7 +39,7 @@ type readerResult struct {
           |--w--[pw]--|--[pr]--r
 */
 
-func NewReadAllReader(reader io.Reader, consumers ... ReadAllConsumer) *ReadAllReader {
+func NewReadAllReader(reader io.Reader, consumers ...ReadAllConsumer) *ReadAllReader {
 	procLen := len(consumers)
 	pipeReaders := make([]*io.PipeReader, procLen)
 	pipeWriters := make([]*io.PipeWriter, procLen)
@@ -105,7 +105,7 @@ func (r *ReadAllReader) ReadAll() ([]interface{}, error) {
 
 func (r *ReadAllReader) close() {
 	for _, pw := range r.pipeWriters {
-		pw.Close()
+		_ = pw.Close()
 	}
 }
 
