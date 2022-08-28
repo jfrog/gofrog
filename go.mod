@@ -1,4 +1,3 @@
-
 module github.com/jfrog/gofrog
 
 go 1.18
