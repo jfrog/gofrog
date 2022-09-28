@@ -42,7 +42,7 @@ type runner struct {
 	maxParallel int
 	// If true, the runner will be cancelled on the first error thrown from a task.
 	failFast bool
-	// Alerts that the runner received some tasks and started running them.
+	// Indicates that the runner received some tasks and started executing them.
 	started bool
 	// A WaitGroup that waits for all the threads to close.
 	threadsWaitGroup sync.WaitGroup
@@ -125,7 +125,7 @@ func (r *runner) Run() {
 	r.threadsWaitGroup.Wait()
 }
 
-// Done notifies that no more tasks will be produced.
+// Done is used to notify that no more tasks will be produced.
 func (r *runner) Done() {
 	close(r.tasks)
 }
@@ -191,15 +191,12 @@ func (r *runner) addThread() {
 
 		// Keep on taking tasks from the queue.
 		for t := range r.tasks {
-			// Increase num of threads running tasks
+			// Increase the total of active threads.
 			atomic.AddUint32(&r.activeThreads, 1)
-			// Mark that some task was executed and the runner started with tasks executing.
-			if !r.started {
-				r.started = true
-			}
+			r.started = true
 			// Run the task.
 			e := t.run(threadId)
-			// Decrease num of threads running tasks
+			// Decrease the total of active threads.
 			atomic.AddUint32(&r.activeThreads, ^uint32(0))
 			if e != nil {
 				if t.onError != nil {
@@ -218,7 +215,7 @@ func (r *runner) addThread() {
 			}
 
 			r.openThreadsLock.Lock()
-			// If there are more open threads than maxParallel, then this thread will be closed.
+			// If the total of open threads is larger than the maximum (maxParallel), then this thread should be closed.
 			if r.openThreads > r.maxParallel {
 				r.openThreads--
 				r.openThreadsLock.Unlock()
