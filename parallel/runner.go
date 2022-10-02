@@ -17,6 +17,7 @@ type Runner interface {
 	OpenThreads() int
 	IsStarted() bool
 	SetMaxParallel(int)
+	TotalTasksInQueue() uint32
 }
 
 type TaskFunc func(int) error
@@ -33,7 +34,7 @@ type runner struct {
 	// Tasks waiting to be executed.
 	tasks chan *task
 	// Tasks counter, used to give each task an identifier (task.num).
-	taskCount uint32
+	taskId uint32
 	// A channel that is closed when the runner is cancelled.
 	cancel chan struct{}
 	// Used to make sure the cancel channel is closed only once.
@@ -54,6 +55,8 @@ type runner struct {
 	openThreadsLock sync.Mutex
 	// The number of threads currently running tasks.
 	activeThreads uint32
+	// The number of tasks in the queue.
+	totalTasksInQueue uint32
 	// A map of errors keyed by threadId.
 	errors map[int]error
 	// A lock on the errors map.
@@ -103,13 +106,14 @@ func (r *runner) AddTaskWithError(t TaskFunc, errorHandler OnErrorFunc) (int, er
 }
 
 func (r *runner) addTask(t TaskFunc, errorHandler OnErrorFunc) (int, error) {
-	nextCount := atomic.AddUint32(&r.taskCount, 1)
+	nextCount := atomic.AddUint32(&r.taskId, 1)
 	task := &task{run: t, num: nextCount - 1, onError: errorHandler}
 
 	select {
 	case <-r.cancel:
 		return -1, errors.New("runner stopped")
 	default:
+		atomic.AddUint32(&r.totalTasksInQueue, 1)
 		r.tasks <- task
 		return int(task.num), nil
 	}
@@ -163,6 +167,10 @@ func (r *runner) OpenThreads() int {
 	return r.openThreads
 }
 
+func (r *runner) TotalTasksInQueue() uint32 {
+	return r.totalTasksInQueue
+}
+
 func (r *runner) SetMaxParallel(newVal int) {
 	if newVal < 1 {
 		newVal = 1
@@ -198,6 +206,8 @@ func (r *runner) addThread() {
 			e := t.run(threadId)
 			// Decrease the total of active threads.
 			atomic.AddUint32(&r.activeThreads, ^uint32(0))
+			// Decrease the total of in progress tasks.
+			atomic.AddUint32(&r.totalTasksInQueue, ^uint32(0))
 			if e != nil {
 				if t.onError != nil {
 					t.onError(e)
