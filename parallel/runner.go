@@ -16,7 +16,6 @@ type Runner interface {
 	Done()
 	Cancel()
 	Errors() map[int]error
-	ActiveThreads() uint32
 	OpenThreads() int
 	IsStarted() bool
 	SetMaxParallel(int)
