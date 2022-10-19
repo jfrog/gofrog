@@ -13,11 +13,10 @@ type Runner interface {
 	Done()
 	Cancel()
 	Errors() map[int]error
-	ActiveThreads() uint32
 	OpenThreads() int
 	IsStarted() bool
 	SetMaxParallel(int)
-	TotalTasksInQueue() uint32
+	GetFinishNotification() chan bool
 }
 
 type TaskFunc func(int) error
@@ -57,6 +56,12 @@ type runner struct {
 	activeThreads uint32
 	// The number of tasks in the queue.
 	totalTasksInQueue uint32
+	// Indicate that the runner has finished.
+	finishNotifier chan bool
+	// Indicates that the finish channel is closed.
+	isFinishedNotifierClosed bool
+	// A lock for finishNotifier check.
+	finishedNotifierLock sync.Mutex
 	// A map of errors keyed by threadId.
 	errors map[int]error
 	// A lock on the errors map.
@@ -76,10 +81,11 @@ func NewRunner(maxParallel int, capacity uint, failFast bool) *runner {
 		capacity = 1
 	}
 	r := &runner{
-		tasks:       make(chan *task, capacity),
-		cancel:      make(chan struct{}),
-		maxParallel: consumers,
-		failFast:    failFast,
+		finishNotifier: make(chan bool, 1),
+		maxParallel:    consumers,
+		failFast:       failFast,
+		cancel:         make(chan struct{}),
+		tasks:          make(chan *task, capacity),
 	}
 	r.errors = make(map[int]error)
 	return r
@@ -134,6 +140,10 @@ func (r *runner) Done() {
 	close(r.tasks)
 }
 
+func (r *runner) GetFinishNotification() chan bool {
+	return r.finishNotifier
+}
+
 // IsStarted is true when a task was executed, false otherwise.
 func (r *runner) IsStarted() bool {
 	return r.started
@@ -158,17 +168,9 @@ func (r *runner) Errors() map[int]error {
 	return r.errors
 }
 
-func (r *runner) ActiveThreads() uint32 {
-	return r.activeThreads
-}
-
 // OpenThreads returns the number of open threads (including idle threads).
 func (r *runner) OpenThreads() int {
 	return r.openThreads
-}
-
-func (r *runner) TotalTasksInQueue() uint32 {
-	return r.totalTasksInQueue
 }
 
 func (r *runner) SetMaxParallel(newVal int) {
@@ -208,6 +210,15 @@ func (r *runner) addThread() {
 			atomic.AddUint32(&r.activeThreads, ^uint32(0))
 			// Decrease the total of in progress tasks.
 			atomic.AddUint32(&r.totalTasksInQueue, ^uint32(0))
+			r.finishedNotifierLock.Lock()
+			// Notify that the runner has finished its job.
+			if !r.isFinishedNotifierClosed && r.activeThreads == 0 && r.totalTasksInQueue == 0 {
+				r.finishNotifier <- true
+				r.isFinishedNotifierClosed = true
+				close(r.finishNotifier)
+			}
+			r.finishedNotifierLock.Unlock()
+
 			if e != nil {
 				if t.onError != nil {
 					t.onError(e)
