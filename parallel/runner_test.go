@@ -8,9 +8,6 @@ import (
 	"time"
 )
 
-var src = rand.NewSource(time.Now().UnixNano())
-var rnd = rand.New(src)
-
 func TestTask(t *testing.T) {
 	const count = 70
 	results := make(chan int, 100)
@@ -27,7 +24,7 @@ func TestTask(t *testing.T) {
 		x := i
 		runner.AddTask(func(i int) error {
 			results <- x
-			time.Sleep(time.Millisecond * time.Duration(rnd.Intn(50)))
+			time.Sleep(time.Millisecond * time.Duration(rand.Intn(50)))
 			if float64(x) > math.Floor(float64(count)/2) {
 				return fmt.Errorf("Second half value %d not counted", x)
 			}
