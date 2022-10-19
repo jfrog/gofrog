@@ -48,7 +48,7 @@ type runner struct {
 	// If true, the runner will be cancelled on the first error thrown from a task.
 	failFast bool
 	// Indicates that the runner received some tasks and started executing them.
-	started bool
+	started uint32
 	// A WaitGroup that waits for all the threads to close.
 	threadsWaitGroup sync.WaitGroup
 	// Threads counter, used to give each thread an identifier (threadId).
@@ -140,7 +140,7 @@ func (r *runner) Run() {
 		// This go routine awaits for an execution of a task. The runner will finish its run if no tasks were executed for waitForTasksTime.
 		go func() {
 			time.Sleep(waitForTasksTime)
-			if !r.started {
+			if !r.IsStarted() {
 				r.notifyFinished()
 			}
 		}()
@@ -165,7 +165,7 @@ func (r *runner) GetFinishedNotification() chan bool {
 
 // IsStarted is true when a task was executed, false otherwise.
 func (r *runner) IsStarted() bool {
-	return r.started
+	return r.started > 0
 }
 
 // Cancel stops the Runner from getting new tasks and empties the tasks queue.
@@ -233,7 +233,7 @@ func (r *runner) addThread() {
 		for t := range r.tasks {
 			// Increase the total of active threads.
 			atomic.AddUint32(&r.activeThreads, 1)
-			r.started = true
+			atomic.AddUint32(&r.started, 1)
 			// Run the task.
 			e := t.run(threadId)
 			// Decrease the total of active threads.

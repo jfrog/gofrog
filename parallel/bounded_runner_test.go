@@ -15,9 +15,6 @@ const numOfConsumers = 10
 
 type taskCreatorFunc func(int, chan int) TaskFunc
 
-var rndSrc = rand.NewSource(time.Now().UnixNano())
-var random = rand.New(rndSrc)
-
 func TestSuccessfulFlow(t *testing.T) {
 	var expectedTotal int
 	results := make(chan int, numOfProducerCycles)
@@ -202,7 +199,7 @@ func produceTasks(runner *runner, results chan int, errorsQueue *ErrorsQueue, ta
 func createSuccessfulFlowTaskFunc(num int, result chan int) TaskFunc {
 	return func(threadId int) error {
 		result <- num
-		time.Sleep(time.Millisecond * time.Duration(random.Intn(50)))
+		time.Sleep(time.Millisecond * time.Duration(rand.Intn(50)))
 		return nil
 	}
 }
@@ -213,7 +210,7 @@ func createTaskWithErrorFunc(num int, result chan int) TaskFunc {
 			return fmt.Errorf("num: %d, above 50 going to stop.", num)
 		}
 		result <- num
-		time.Sleep(time.Millisecond * time.Duration(random.Intn(50)))
+		time.Sleep(time.Millisecond * time.Duration(rand.Intn(50)))
 		return nil
 	}
 }
@@ -224,7 +221,7 @@ func createTaskWithIntAsErrorFunc(num int, result chan int) TaskFunc {
 			return fmt.Errorf("%d", num)
 		}
 		result <- num
-		time.Sleep(time.Millisecond * time.Duration(random.Intn(50)))
+		time.Sleep(time.Millisecond * time.Duration(rand.Intn(50)))
 		return nil
 	}
 }
