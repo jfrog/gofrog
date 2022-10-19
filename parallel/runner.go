@@ -16,6 +16,7 @@ type Runner interface {
 	Done()
 	Cancel()
 	Errors() map[int]error
+	ActiveThreads() uint32
 	OpenThreads() int
 	IsStarted() bool
 	SetMaxParallel(int)
@@ -64,9 +65,9 @@ type runner struct {
 	finishedNotifier chan bool
 	// Indicates that the finish channel is closed.
 	finishedNotifierChannelClosed bool
-	// A lock for the finishedNotifier check.v
+	// A lock for the finishedNotifier check.
 	finishedNotifierLock sync.Mutex
-	// A flag that enables the finishedNotifier operation.
+	// A flag that allows receiving a notification through a channel, when the runner finishes executing all the tasks.
 	finishedNotificationEnabled bool
 	// A map of errors keyed by threadId.
 	errors map[int]error
@@ -135,13 +136,15 @@ func (r *runner) addTask(t TaskFunc, errorHandler OnErrorFunc) (int, error) {
 // If a task returns an error and failFast is on all goroutines will stop and the runner will be notified.
 // Notice: Run() is a blocking operation.
 func (r *runner) Run() {
-	// This go routine awaits for an execution of a task. The runner will finish its run if no tasks were executed for waitForTasksTime.
-	go func() {
-		time.Sleep(waitForTasksTime)
-		if !r.started {
-			r.closeFinishedNotifier()
-		}
-	}()
+	if r.finishedNotificationEnabled {
+		// This go routine awaits for an execution of a task. The runner will finish its run if no tasks were executed for waitForTasksTime.
+		go func() {
+			time.Sleep(waitForTasksTime)
+			if !r.started {
+				r.notifyFinished()
+			}
+		}()
+	}
 
 	for i := 0; i < r.maxParallel; i++ {
 		r.addThread()
@@ -155,7 +158,7 @@ func (r *runner) Done() {
 }
 
 // GetFinishedNotification returns the finishedNotifier channel, which notifies when the runner is done.
-// In order to use the finishedNotifier channel, it must be set with finishedNotificationEnabled variable.
+// In order to use the finishedNotifier channel, you must set the finishedNotificationEnabled variable.
 func (r *runner) GetFinishedNotification() chan bool {
 	return r.finishedNotifier
 }
@@ -175,6 +178,9 @@ func (r *runner) Cancel() {
 		// Consume all tasks left
 		for len(r.tasks) > 0 {
 			<-r.tasks
+		}
+		if r.finishedNotificationEnabled {
+			r.notifyFinished()
 		}
 	})
 }
@@ -237,8 +243,8 @@ func (r *runner) addThread() {
 			if r.finishedNotificationEnabled {
 				r.finishedNotifierLock.Lock()
 				// Notify that the runner has finished its job.
-				if !r.finishedNotifierChannelClosed && r.activeThreads == 0 && r.totalTasksInQueue == 0 {
-					r.closeFinishedNotifier()
+				if r.activeThreads == 0 && r.totalTasksInQueue == 0 {
+					r.notifyFinished()
 				}
 				r.finishedNotifierLock.Unlock()
 			}
@@ -271,7 +277,7 @@ func (r *runner) addThread() {
 	}(int(nextThreadId))
 }
 
-func (r *runner) closeFinishedNotifier() {
+func (r *runner) notifyFinished() {
 	if !r.finishedNotifierChannelClosed {
 		r.finishedNotifier <- true
 		r.finishedNotifierChannelClosed = true
