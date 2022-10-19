@@ -4,7 +4,10 @@ import (
 	"errors"
 	"sync"
 	"sync/atomic"
+	"time"
 )
+
+const waitForTasksTime = 10 * time.Second
 
 type Runner interface {
 	AddTask(TaskFunc) (int, error)
@@ -17,7 +20,8 @@ type Runner interface {
 	OpenThreads() int
 	IsStarted() bool
 	SetMaxParallel(int)
-	TotalTasksInQueue() uint32
+	GetFinishedNotification() chan bool
+	SetFinishedNotification(bool)
 }
 
 type TaskFunc func(int) error
@@ -57,6 +61,14 @@ type runner struct {
 	activeThreads uint32
 	// The number of tasks in the queue.
 	totalTasksInQueue uint32
+	// Indicate that the runner has finished.
+	finishedNotifier chan bool
+	// Indicates that the finish channel is closed.
+	finishedNotifierChannelClosed bool
+	// A lock for the finishedNotifier check.
+	finishedNotifierLock sync.Mutex
+	// A flag that allows receiving a notification through a channel, when the runner finishes executing all the tasks.
+	finishedNotificationEnabled bool
 	// A map of errors keyed by threadId.
 	errors map[int]error
 	// A lock on the errors map.
@@ -76,10 +88,11 @@ func NewRunner(maxParallel int, capacity uint, failFast bool) *runner {
 		capacity = 1
 	}
 	r := &runner{
-		tasks:       make(chan *task, capacity),
-		cancel:      make(chan struct{}),
-		maxParallel: consumers,
-		failFast:    failFast,
+		finishedNotifier: make(chan bool, 1),
+		maxParallel:      consumers,
+		failFast:         failFast,
+		cancel:           make(chan struct{}),
+		tasks:            make(chan *task, capacity),
 	}
 	r.errors = make(map[int]error)
 	return r
@@ -123,6 +136,16 @@ func (r *runner) addTask(t TaskFunc, errorHandler OnErrorFunc) (int, error) {
 // If a task returns an error and failFast is on all goroutines will stop and the runner will be notified.
 // Notice: Run() is a blocking operation.
 func (r *runner) Run() {
+	if r.finishedNotificationEnabled {
+		// This go routine awaits for an execution of a task. The runner will finish its run if no tasks were executed for waitForTasksTime.
+		go func() {
+			time.Sleep(waitForTasksTime)
+			if !r.started {
+				r.notifyFinished()
+			}
+		}()
+	}
+
 	for i := 0; i < r.maxParallel; i++ {
 		r.addThread()
 	}
@@ -132,6 +155,12 @@ func (r *runner) Run() {
 // Done is used to notify that no more tasks will be produced.
 func (r *runner) Done() {
 	close(r.tasks)
+}
+
+// GetFinishedNotification returns the finishedNotifier channel, which notifies when the runner is done.
+// In order to use the finishedNotifier channel, you must set the finishedNotificationEnabled variable.
+func (r *runner) GetFinishedNotification() chan bool {
+	return r.finishedNotifier
 }
 
 // IsStarted is true when a task was executed, false otherwise.
@@ -150,6 +179,9 @@ func (r *runner) Cancel() {
 		for len(r.tasks) > 0 {
 			<-r.tasks
 		}
+		if r.finishedNotificationEnabled {
+			r.notifyFinished()
+		}
 	})
 }
 
@@ -158,17 +190,17 @@ func (r *runner) Errors() map[int]error {
 	return r.errors
 }
 
-func (r *runner) ActiveThreads() uint32 {
-	return r.activeThreads
-}
-
 // OpenThreads returns the number of open threads (including idle threads).
 func (r *runner) OpenThreads() int {
 	return r.openThreads
 }
 
-func (r *runner) TotalTasksInQueue() uint32 {
-	return r.totalTasksInQueue
+func (r *runner) ActiveThreads() uint32 {
+	return r.activeThreads
+}
+
+func (r *runner) SetFinishedNotification(toEnable bool) {
+	r.finishedNotificationEnabled = toEnable
 }
 
 func (r *runner) SetMaxParallel(newVal int) {
@@ -208,6 +240,15 @@ func (r *runner) addThread() {
 			atomic.AddUint32(&r.activeThreads, ^uint32(0))
 			// Decrease the total of in progress tasks.
 			atomic.AddUint32(&r.totalTasksInQueue, ^uint32(0))
+			if r.finishedNotificationEnabled {
+				r.finishedNotifierLock.Lock()
+				// Notify that the runner has finished its job.
+				if r.activeThreads == 0 && r.totalTasksInQueue == 0 {
+					r.notifyFinished()
+				}
+				r.finishedNotifierLock.Unlock()
+			}
+
 			if e != nil {
 				if t.onError != nil {
 					t.onError(e)
@@ -234,4 +275,12 @@ func (r *runner) addThread() {
 			r.openThreadsLock.Unlock()
 		}
 	}(int(nextThreadId))
+}
+
+func (r *runner) notifyFinished() {
+	if !r.finishedNotifierChannelClosed {
+		r.finishedNotifier <- true
+		r.finishedNotifierChannelClosed = true
+		close(r.finishedNotifier)
+	}
 }
