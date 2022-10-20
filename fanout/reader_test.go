@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
-	"io/ioutil"
 	"strings"
 	"testing"
 )
@@ -83,7 +82,7 @@ func TestFanoutProgressiveRead(t *testing.T) {
 	r := bytes.NewReader(inputBytes)
 	pfr := NewReader(r, ConsumerFunc(proc1), ConsumerFunc(proc2))
 
-	_, err := ioutil.ReadAll(pfr)
+	_, err := io.ReadAll(pfr)
 	if err != nil {
 		t.Error(err)
 	}
@@ -119,7 +118,7 @@ func TestFanoutProgressiveReadError(t *testing.T) {
 	r := bytes.NewReader(inputBytes)
 	pfr := NewReader(r, ConsumerFunc(proc1), ConsumerFunc(proc2))
 
-	_, err := ioutil.ReadAll(pfr)
+	_, err := io.ReadAll(pfr)
 	if err == nil {
 		t.Fatal("Expected a non-nil error")
 	}
@@ -145,7 +144,7 @@ func TestFanoutProgressiveReadError(t *testing.T) {
 // This scenario can cause deadlock
 func TestSyncReadOnError(t *testing.T) {
 	proc1 := func(r1 io.Reader) (interface{}, error) {
-		n, e := ioutil.ReadAll(r1)
+		n, e := io.ReadAll(r1)
 		return n, e
 	}
 
