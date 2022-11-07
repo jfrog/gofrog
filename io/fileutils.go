@@ -5,7 +5,6 @@ import (
 	cr "crypto/rand"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -26,7 +25,7 @@ var src = rand.NewSource(time.Now().UnixNano())
 var rnd = rand.New(src)
 
 func CreateRandomLenFile(maxLen int, filesDir string, prefix string) string {
-	file, _ := ioutil.TempFile(filesDir, prefix)
+	file, _ := os.CreateTemp(filesDir, prefix)
 	fname := file.Name()
 	len := rnd.Intn(maxLen)
 	created, err := CreateRandFile(fname, len)
