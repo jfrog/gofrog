@@ -1,0 +1,5 @@
+- params:
+    git:
+      repoName: gofrog
+      branches:
+        - dev
