@@ -64,6 +64,16 @@ func (v *Version) AtLeast(minVersion string) bool {
 	return v.Compare(minVersion) <= 0
 }
 
+// Returns true if this version is smaller from the version sent as an argument.
+func (v *Version) isLess(minVersion string) bool {
+	return v.Compare(minVersion) < 0
+}
+
+// Returns true if this version is larger from the version sent as an argument.
+func (v *Version) isGreater(minVersion string) bool {
+	return v.Compare(minVersion) > 0
+}
+
 func compareTokens(ver1Token, ver2Token string) int {
 	if ver1Token == ver2Token {
 		return 0
