@@ -59,22 +59,24 @@ func (v *Version) Compare(ver1 string) int {
 	return 0
 }
 
-// Returns true if this version is larger or equals from the version sent as an argument.
+// AtLeast Returns true if this version is larger or equals from the version sent as an argument.
 func (v *Version) AtLeast(minVersion string) bool {
 	return v.Compare(minVersion) <= 0
 }
 
-// Returns true if this version is smaller from the version sent as an argument.
-func (v *Version) IsLess(minVersion string) bool {
-	return v.Compare(minVersion) < 0
+// IsLessThan Returns true if this version is smaller from the version sent as an argument.
+func (v *Version) IsLessThan(argVersion string) bool {
+	return v.Compare(argVersion) > 0
 }
 
-// Returns true if this version is larger from the version sent as an argument.
-func (v *Version) IsGreater(minVersion string) bool {
-	return v.Compare(minVersion) > 0
+// IsGreaterThan Returns true if this version is larger from the version sent as an argument.
+func (v *Version) IsGreaterThan(argVersion string) bool {
+	return v.Compare(argVersion) < 0
 }
 
 func compareTokens(ver1Token, ver2Token string) int {
+	trimBrackets(&ver1Token)
+	trimBrackets(&ver2Token)
 	if ver1Token == ver2Token {
 		return 0
 	}
@@ -113,4 +115,10 @@ func splitNumberAndSuffix(token string) (string, string) {
 		return "0", token
 	}
 	return numeric, token[i:]
+}
+
+// trimBrackets if there are any to avoid trying to compare mixed types
+func trimBrackets(version *string) {
+	replacer := strings.NewReplacer("[", "", "]", "")
+	*version = replacer.Replace(*version)
 }
