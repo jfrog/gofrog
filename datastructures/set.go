@@ -13,6 +13,10 @@ func MakeSet[T comparable]() *Set[T] {
 	}
 }
 
+func (set *Set[T]) Elements() map[T]struct{} {
+	return set.container
+}
+
 func (set *Set[T]) Exists(key T) bool {
 	_, exists := set.container[key]
 	return exists
