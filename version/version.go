@@ -2,9 +2,13 @@ package version
 
 import (
 	"errors"
+	"regexp"
 	"strconv"
 	"strings"
 )
+
+// Taken from official docs https://semver.org/
+const regex = "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
 
 type Version struct {
 	version string
@@ -75,7 +79,11 @@ func (v *Version) GetPatch() (string, error) {
 	return v.extractPosition(2)
 }
 func (v *Version) IsSemanticFormat() bool {
-	return strings.Count(v.GetVersion(), ".") == 2
+	r, err := regexp.Compile(regex)
+	if err != nil {
+		return false
+	}
+	return r.MatchString(v.version)
 }
 
 func (v *Version) extractPosition(index int) (string, error) {
