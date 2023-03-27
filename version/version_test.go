@@ -1,6 +1,9 @@
 package version
 
-import "testing"
+import (
+	"github.com/stretchr/testify/assert"
+	"testing"
+)
 
 func TestCompare(t *testing.T) {
 	tests := []struct {
@@ -79,6 +82,40 @@ func TestAtLeast(t *testing.T) {
 			if result != test.expected {
 				t.Error("ver1:", test.ver1, "ver2:", test.ver2, "Expecting:", test.expected, "got:", result)
 			}
+		})
+	}
+}
+
+func TestGetSemantics(t *testing.T) {
+	tests := []struct {
+		fullVersion Version
+		major       string
+		minor       string
+		patch       string
+	}{
+		{
+			fullVersion: Version{"1.2.3"},
+			major:       "1",
+			minor:       "2",
+			patch:       "3",
+		},
+		{
+			fullVersion: Version{"2.2.3"},
+			major:       "2",
+			minor:       "2",
+			patch:       "3",
+		}, {
+			fullVersion: Version{"0.2.3"},
+			major:       "0",
+			minor:       "2",
+			patch:       "3",
+		},
+	}
+	for _, test := range tests {
+		t.Run("", func(t *testing.T) {
+			assert.Equal(t, test.major, test.fullVersion.GetMajor())
+			assert.Equal(t, test.minor, test.fullVersion.GetMinor())
+			assert.Equal(t, test.patch, test.fullVersion.GetPatch())
 		})
 	}
 }

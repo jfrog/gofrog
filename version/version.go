@@ -64,6 +64,17 @@ func (v *Version) AtLeast(minVersion string) bool {
 	return v.Compare(minVersion) <= 0
 }
 
+func (v *Version) GetMajor() string {
+	return strings.Split(v.version, ".")[0]
+}
+
+func (v *Version) GetMinor() string {
+	return strings.Split(v.version, ".")[1]
+}
+func (v *Version) GetPatch() string {
+	return strings.Split(v.version, ".")[2]
+}
+
 func compareTokens(ver1Token, ver2Token string) int {
 	if ver1Token == ver2Token {
 		return 0
