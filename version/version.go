@@ -1,6 +1,7 @@
 package version
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 )
@@ -64,15 +65,24 @@ func (v *Version) AtLeast(minVersion string) bool {
 	return v.Compare(minVersion) <= 0
 }
 
-func (v *Version) GetMajor() string {
-	return strings.Split(v.version, ".")[0]
+func (v *Version) GetMajor() (string, error) {
+	return v.extractPosition(0)
+}
+func (v *Version) GetMinor() (string, error) {
+	return v.extractPosition(1)
+}
+func (v *Version) GetPatch() (string, error) {
+	return v.extractPosition(2)
+}
+func (v *Version) IsSemanticFormat() bool {
+	return strings.Count(v.GetVersion(), ".") == 2
 }
 
-func (v *Version) GetMinor() string {
-	return strings.Split(v.version, ".")[1]
-}
-func (v *Version) GetPatch() string {
-	return strings.Split(v.version, ".")[2]
+func (v *Version) extractPosition(index int) (string, error) {
+	if !v.IsSemanticFormat() {
+		return "", errors.New("invalid semantic versions format")
+	}
+	return strings.Split(v.version, ".")[index], nil
 }
 
 func compareTokens(ver1Token, ver2Token string) int {

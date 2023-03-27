@@ -113,9 +113,38 @@ func TestGetSemantics(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run("", func(t *testing.T) {
-			assert.Equal(t, test.major, test.fullVersion.GetMajor())
-			assert.Equal(t, test.minor, test.fullVersion.GetMinor())
-			assert.Equal(t, test.patch, test.fullVersion.GetPatch())
+			major, err := test.fullVersion.GetMajor()
+			assert.NoError(t, err)
+			minor, err := test.fullVersion.GetMinor()
+			assert.NoError(t, err)
+			patch, err := test.fullVersion.GetPatch()
+			assert.NoError(t, err)
+
+			assert.Equal(t, test.major, major)
+			assert.Equal(t, test.minor, minor)
+			assert.Equal(t, test.patch, patch)
+		})
+	}
+}
+
+func TestGetSemanticsInvalidFormat(t *testing.T) {
+	tests := []struct {
+		fullVersion Version
+		major       string
+		minor       string
+		patch       string
+	}{
+		{
+			fullVersion: Version{"1.2"},
+			major:       "1",
+			minor:       "2",
+			patch:       "",
+		},
+	}
+	for _, test := range tests {
+		t.Run("", func(t *testing.T) {
+			_, err := test.fullVersion.GetMajor()
+			assert.Error(t, err)
 		})
 	}
 }
