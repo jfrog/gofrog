@@ -83,13 +83,11 @@ func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdO
 	if err != nil {
 		return
 	}
-	defer cmdReader.Close()
 	scanner := bufio.NewScanner(cmdReader)
 	cmdReaderStderr, err := cmd.StderrPipe()
 	if err != nil {
 		return
 	}
-	defer cmdReaderStderr.Close()
 	scannerStderr := bufio.NewScanner(cmdReaderStderr)
 	err = cmd.Start()
 	if err != nil {
@@ -152,6 +150,8 @@ func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdO
 	}()
 
 	for err = range errChan {
+		err = cmdReader.Close()
+		err = cmdReaderStderr.Close()
 		return
 	}
 
@@ -162,6 +162,8 @@ func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdO
 	exitOk = true
 	if _, ok := err.(*exec.ExitError); ok {
 		// The program has exited with an exit code != 0
+		err = cmdReader.Close()
+		err = cmdReaderStderr.Close()
 		exitOk = false
 	}
 	return
