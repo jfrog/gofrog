@@ -174,8 +174,6 @@ func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdO
 	exitOk = true
 	if _, ok := err.(*exec.ExitError); ok {
 		// The program has exited with an exit code != 0
-		//err = cmdReader.Close()
-		//err = cmdReaderStderr.Close()
 		exitOk = false
 	}
 	return
