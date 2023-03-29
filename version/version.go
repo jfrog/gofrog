@@ -2,13 +2,10 @@ package version
 
 import (
 	"errors"
-	"regexp"
+	"golang.org/x/mod/semver"
 	"strconv"
 	"strings"
 )
-
-// Taken from official docs https://semver.org/
-const regex = "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
 
 type Version struct {
 	version string
@@ -78,16 +75,9 @@ func (v *Version) GetMinor() (string, error) {
 func (v *Version) GetPatch() (string, error) {
 	return v.extractPosition(2)
 }
-func (v *Version) IsSemanticFormat() bool {
-	r, err := regexp.Compile(regex)
-	if err != nil {
-		return false
-	}
-	return r.MatchString(v.version)
-}
 
 func (v *Version) extractPosition(index int) (string, error) {
-	if !v.IsSemanticFormat() {
+	if semver.IsValid(v.version) {
 		return "", errors.New("invalid semantic versions format")
 	}
 	return strings.Split(v.version, ".")[index], nil
