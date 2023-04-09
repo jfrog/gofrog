@@ -7,7 +7,7 @@ import (
 	"sync"
 )
 
-//A reader that emits its read to multiple consumers using a ReadAll(p []byte) ([]interface{}, error) func
+// A reader that emits its read to multiple consumers using a ReadAll(p []byte) ([]interface{}, error) func
 type ReadAllReader struct {
 	reader      io.Reader
 	consumers   []ReadAllConsumer
@@ -55,8 +55,8 @@ func NewReadAllReader(reader io.Reader, consumers ...ReadAllConsumer) *ReadAllRe
 }
 
 func toWriters(pipeWriters []*io.PipeWriter) (writers []io.Writer) {
-	//Convert to an array of io.Writers so it can be taken by a variadic func
-	//See: https://groups.google.com/forum/#!topic/golang-nuts/zU3BqD5mKs8
+	// Convert to an array of io.Writers so it can be taken by a variadic func
+	// See: https://groups.google.com/forum/#!topic/golang-nuts/zU3BqD5mKs8
 	writers = make([]io.Writer, len(pipeWriters))
 	for i, w := range pipeWriters {
 		writers[i] = w

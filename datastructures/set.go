@@ -6,7 +6,7 @@ type Set[T comparable] struct {
 	container map[T]struct{}
 }
 
-//MakeSet initialize the set
+// MakeSet initialize the set
 func MakeSet[T comparable]() *Set[T] {
 	return &Set[T]{
 		container: make(map[T]struct{}),

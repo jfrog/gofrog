@@ -79,27 +79,18 @@ func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdO
 	}
 
 	cmd := config.GetCmd()
-	cmdReader, err := cmd.StdoutPipe()
+	stdoutReader, stderrReader, err := createCommandReaders(cmd)
 	if err != nil {
 		return
 	}
-	defer cmdReader.Close()
-	scanner := bufio.NewScanner(cmdReader)
-	cmdReaderStderr, err := cmd.StderrPipe()
-	if err != nil {
-		return
-	}
-	defer cmdReaderStderr.Close()
-	scannerStderr := bufio.NewScanner(cmdReaderStderr)
-	err = cmd.Start()
-	if err != nil {
+	if err = cmd.Start(); err != nil {
 		return
 	}
 	errChan := make(chan error)
 	wg.Add(1)
 	go func() {
-		for scanner.Scan() {
-			line := scanner.Text()
+		for stdoutReader.Scan() {
+			line := stdoutReader.Text()
 			for _, regExp := range regExpStruct {
 				matched := regExp.RegExp.Match([]byte(line))
 				if matched {
@@ -120,8 +111,8 @@ func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdO
 	}()
 	wg.Add(1)
 	go func() {
-		for scannerStderr.Scan() {
-			line := scannerStderr.Text()
+		for stderrReader.Scan() {
+			line := stderrReader.Text()
 			var scannerError error
 			for _, regExp := range regExpStruct {
 				matched := regExp.RegExp.Match([]byte(line))
@@ -165,6 +156,23 @@ func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdO
 		exitOk = false
 	}
 	return
+}
+
+// Create command stdout and stderr readers.
+// The returned readers are automatically closed after the running command exit and shouldn't be closed explicitly.
+// cmd - The command to execute
+func createCommandReaders(cmd *exec.Cmd) (*bufio.Scanner, *bufio.Scanner, error) {
+	stdoutReader, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	stderrReader, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return bufio.NewScanner(stdoutReader), bufio.NewScanner(stderrReader), nil
 }
 
 type CmdConfig interface {
