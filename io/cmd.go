@@ -83,13 +83,23 @@ func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdO
 	if err != nil {
 		return
 	}
-	defer cmdReader.Close()
+	defer func() {
+		closeErr := cmdReader.Close()
+		if err == nil {
+			err = closeErr
+		}
+	}()
 	scanner := bufio.NewScanner(cmdReader)
 	cmdReaderStderr, err := cmd.StderrPipe()
 	if err != nil {
 		return
 	}
-	defer cmdReaderStderr.Close()
+	defer func() {
+		closeErr := cmdReader.Close()
+		if err == nil {
+			err = closeErr
+		}
+	}()
 	scannerStderr := bufio.NewScanner(cmdReaderStderr)
 	err = cmd.Start()
 	if err != nil {
