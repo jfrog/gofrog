@@ -9,6 +9,13 @@ type Version struct {
 	version string
 }
 
+// Index positions x.y.z
+const (
+	Patch = 2
+	Minor = 1
+	Major = 0
+)
+
 func NewVersion(version string) *Version {
 	return &Version{version: version}
 }
@@ -64,26 +71,33 @@ func (v *Version) AtLeast(minVersion string) bool {
 	return v.Compare(minVersion) <= 0
 }
 
-// Check if candidate is an upgrade of the base version in the specific index,
+// Check if candidate is an upgrade/downgrade of the base version only in the specified position
 // which corresponds to Major, Minor and Patch positions.
-func (v *Version) IsGreaterAtIndex(candidate Version, index int) (*Version, error) {
-	return checkUpgradeAtIndex(v.version, candidate.version, index, func(v1Part int, v2Part int) bool {
+// If True, returns the version, if false return nil.
+// Examples: currVersion = Version{"1.2.1}
+// currVersion.IsUpgradeAtPosition(Version{"1.2.2"}, 3) => Version{"1.2.2"}.
+// currVersion.IsUpgradeAtPosition(Version{"1.2.0"}, 3) => nil.
+// currVersion.IsUpgradeAtPosition(Version{"2.2.0"}, 1) => Version{"2.2.0"}.
+func (v *Version) IsUpgradeAtPosition(candidate Version, semanticPosition int) (*Version, error) {
+	return checkUpgradeAtIndex(v.version, candidate.version, semanticPosition, func(v1Part int, v2Part int) bool {
 		return v1Part < v2Part
 	})
 }
 
-// Check if candidate is a downgrade of the base version in the specific index,
-// which corresponds to Major, Minor and Patch positions.
-func (v *Version) IsDowngradeAtIndex(candidate Version, index int) (*Version, error) {
-	return checkUpgradeAtIndex(v.version, candidate.version, index, func(v1Part int, v2Part int) bool {
+// Examples: currVersion = Version{"1.2.1}.
+// currVersion.IsDowngradeAtPosition(Version{"1.2.0"}, 3) => Version{"1.2.0"}.
+// currVersion.IsDowngradeAtPosition(Version{"1.2.5"}, 3) => nil.
+// currVersion.IsDowngradeAtPosition(Version{"0.2.0"}, 1) => Version{"0.2.0"}.
+func (v *Version) IsDowngradeAtPosition(candidate Version, semanticPosition int) (*Version, error) {
+	return checkUpgradeAtIndex(v.version, candidate.version, semanticPosition, func(v1Part int, v2Part int) bool {
 		return v1Part > v2Part
 	})
 }
 
-// Helper function to check whether a version is an upgrade or a downgrade of another version at the specified index.
-func checkUpgradeAtIndex(v1 string, v2 string, index int, compareFunc func(int, int) bool) (*Version, error) {
-	v1Parts := strings.Split(v1, ".")
-	v2Parts := strings.Split(v2, ".")
+// Helper function to check whether a version is an upgrade or a downgrade of another version at the specified position.
+func checkUpgradeAtIndex(v1 string, v2 string, semanticPosition int, compareFunc func(int, int) bool) (*Version, error) {
+	v1Parts := strings.Split(strings.Trim(v1, "v"), ".")
+	v2Parts := strings.Split(strings.Trim(v2, "v"), ".")
 	for i := 0; i < 3; i++ {
 		v1Part, err := strconv.Atoi(v1Parts[i])
 		if err != nil {
@@ -96,11 +110,14 @@ func checkUpgradeAtIndex(v1 string, v2 string, index int, compareFunc func(int, 
 		if v1Part == v2Part {
 			continue
 		}
-		if i < index-1 {
+		// Verify we are at the specific semanticPosition we want to check
+		if i < semanticPosition {
 			return nil, nil
 		}
 		if compareFunc(v1Part, v2Part) {
 			return &Version{version: v2}, nil
+		} else {
+			return nil, nil
 		}
 	}
 	return nil, nil
