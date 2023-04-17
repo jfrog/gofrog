@@ -64,6 +64,54 @@ func (v *Version) AtLeast(minVersion string) bool {
 	return v.Compare(minVersion) <= 0
 }
 
+// Check if candidate is an upgrade of the base version in the specific index,
+// which corresponds to Major, Minor and Patch positions.
+func (v *Version) IsGreaterAtIndex(candidate Version, index int) (*Version, error) {
+	v1Parts := strings.Split(v.version, ".")
+	v2Parts := strings.Split(candidate.version, ".")
+	for i := 0; i < 3; i++ {
+		v1Part, err := strconv.Atoi(v1Parts[i])
+		v2Part, err := strconv.Atoi(v2Parts[i])
+		if err != nil {
+			return nil, err
+		}
+		if v1Part == v2Part {
+			continue
+		}
+		if i < index-1 {
+			return nil, nil
+		}
+		if v1Part < v2Part {
+			return &candidate, nil
+		}
+	}
+	return nil, nil
+}
+
+// Check if candidate is an upgrade of the base version in the specific index,
+// which corresponds to Major, Minor and Patch positions.
+func (v *Version) IsDowngradeAtIndex(candidate Version, index int) (*Version, error) {
+	v1Parts := strings.Split(v.version, ".")
+	v2Parts := strings.Split(candidate.version, ".")
+	for i := 0; i < 3; i++ {
+		v1Part, err := strconv.Atoi(v1Parts[i])
+		v2Part, err := strconv.Atoi(v2Parts[i])
+		if err != nil {
+			return nil, err
+		}
+		if v1Part == v2Part {
+			continue
+		}
+		if i < index-1 {
+			return nil, nil
+		}
+		if v1Part > v2Part {
+			return &candidate, nil
+		}
+	}
+	return nil, nil
+}
+
 func compareTokens(ver1Token, ver2Token string) int {
 	if ver1Token == ver2Token {
 		return 0
