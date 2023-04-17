@@ -67,34 +67,28 @@ func (v *Version) AtLeast(minVersion string) bool {
 // Check if candidate is an upgrade of the base version in the specific index,
 // which corresponds to Major, Minor and Patch positions.
 func (v *Version) IsGreaterAtIndex(candidate Version, index int) (*Version, error) {
-	v1Parts := strings.Split(v.version, ".")
-	v2Parts := strings.Split(candidate.version, ".")
-	for i := 0; i < 3; i++ {
-		v1Part, err := strconv.Atoi(v1Parts[i])
-		v2Part, err := strconv.Atoi(v2Parts[i])
-		if err != nil {
-			return nil, err
-		}
-		if v1Part == v2Part {
-			continue
-		}
-		if i < index-1 {
-			return nil, nil
-		}
-		if v1Part < v2Part {
-			return &candidate, nil
-		}
-	}
-	return nil, nil
+	return checkUpgradeAtIndex(v.version, candidate.version, index, func(v1Part int, v2Part int) bool {
+		return v1Part < v2Part
+	})
 }
 
-// Check if candidate is an upgrade of the base version in the specific index,
+// Check if candidate is a downgrade of the base version in the specific index,
 // which corresponds to Major, Minor and Patch positions.
 func (v *Version) IsDowngradeAtIndex(candidate Version, index int) (*Version, error) {
-	v1Parts := strings.Split(v.version, ".")
-	v2Parts := strings.Split(candidate.version, ".")
+	return checkUpgradeAtIndex(v.version, candidate.version, index, func(v1Part int, v2Part int) bool {
+		return v1Part > v2Part
+	})
+}
+
+// Helper function to check whether a version is an upgrade or a downgrade of another version at the specified index.
+func checkUpgradeAtIndex(v1 string, v2 string, index int, compareFunc func(int, int) bool) (*Version, error) {
+	v1Parts := strings.Split(v1, ".")
+	v2Parts := strings.Split(v2, ".")
 	for i := 0; i < 3; i++ {
 		v1Part, err := strconv.Atoi(v1Parts[i])
+		if err != nil {
+			return nil, err
+		}
 		v2Part, err := strconv.Atoi(v2Parts[i])
 		if err != nil {
 			return nil, err
@@ -105,8 +99,8 @@ func (v *Version) IsDowngradeAtIndex(candidate Version, index int) (*Version, er
 		if i < index-1 {
 			return nil, nil
 		}
-		if v1Part > v2Part {
-			return &candidate, nil
+		if compareFunc(v1Part, v2Part) {
+			return &Version{version: v2}, nil
 		}
 	}
 	return nil, nil
