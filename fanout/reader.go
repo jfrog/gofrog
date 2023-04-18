@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-//A reader that emits its read to multiple consumers using an io.Reader Read(p []byte) (int, error) func
+// A reader that emits its read to multiple consumers using an io.Reader Read(p []byte) (int, error) func
 type Reader struct {
 	reader      io.Reader
 	consumers   []Consumer
