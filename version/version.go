@@ -73,9 +73,9 @@ func (v *Version) AtLeast(minVersion string) bool {
 	return v.Compare(minVersion) <= 0
 }
 
-// Check if candidate is an upgrade/downgrade of the base version only in the specified position
+// Check if a candidate is an upgrade/downgrade of the base version only in the specified position
 // Which corresponds to Major, Minor and Patch positions.
-// Returns int results True,False and -1 for error.
+// Returns int results True, False and -1 for error.
 // Examples: currVersion = Version{"1.2.1}
 // currVersion.CompareUpgradeAtPosition(Version{"1.2.2"}, Patch) => 1.
 // currVersion.CompareUpgradeAtPosition(Version{"1.2.0"}, Patch) => 0.
