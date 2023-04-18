@@ -74,8 +74,8 @@ func (v *Version) AtLeast(minVersion string) bool {
 }
 
 // Check if candidate is an upgrade/downgrade of the base version only in the specified position
-// which corresponds to Major, Minor and Patch positions.
-// Outputs int results True,False and -1 for error.
+// Which corresponds to Major, Minor and Patch positions.
+// Returns int results True,False and -1 for error.
 // Examples: currVersion = Version{"1.2.1}
 // currVersion.CompareUpgradeAtPosition(Version{"1.2.2"}, Patch) => 1.
 // currVersion.CompareUpgradeAtPosition(Version{"1.2.0"}, Patch) => 0.
@@ -86,7 +86,7 @@ func (v *Version) CompareUpgradeAtPosition(candidate Version, versionPosition Ve
 	})
 }
 
-// Examples: currVersion = Version{"1.2.1}.
+// Examples: currVersion = Version{"1.2.1"}.
 // currVersion.CompareDowngradeAtPosition(Version{"1.2.2"}, Patch) => 0.
 // currVersion.CompareDowngradeAtPosition(Version{"1.2.0"}, Patch) => 1.
 // currVersion.CompareDowngradeAtPosition(Version{"2.2.0"}, Major) => 0.
@@ -96,7 +96,7 @@ func (v *Version) CompareDowngradeAtPosition(candidate Version, versionPosition 
 	})
 }
 
-// Helper function to check whether a version is an upgrade or a downgrade of another version at the specified position.
+// Helper function to check whether a version is an upgrade or a downgrade version at the specified VersionPosition.
 func CompareAtPosition(v1 string, v2 string, versionPosition VersionPosition, compareFunc func(int, int) bool) (int, error) {
 	v1Parts := strings.Split(strings.Trim(v1, "v"), ".")
 	v2Parts := strings.Split(strings.Trim(v2, "v"), ".")
@@ -118,7 +118,6 @@ func CompareAtPosition(v1 string, v2 string, versionPosition VersionPosition, co
 		}
 		if compareFunc(v1Part, v2Part) {
 			return 1, nil
-			//return &Version{version: v2}, nil
 		} else {
 			return 0, nil
 		}
