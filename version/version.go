@@ -14,8 +14,8 @@ type VersionPosition int
 // Index positions [x.y.z]
 const (
 	Patch VersionPosition = 2
-	Minor                 = 1
-	Major                 = 0
+	Minor VersionPosition = 1
+	Major VersionPosition = 0
 )
 
 func NewVersion(version string) *Version {
