@@ -86,30 +86,7 @@ func TestAtLeast(t *testing.T) {
 	}
 }
 
-func TestVersion_IsDowngradeAtPosition(t *testing.T) {
-	tests := []struct {
-		position         VersionPosition
-		currVersion      *Version
-		candidateVersion *Version
-		expected         int
-	}{
-		{Patch, &Version{version: "1.2.0"}, &Version{version: "1.2.3"}, 0},
-		{Patch, &Version{version: "1.2.1"}, &Version{version: "1.2.0"}, 1},
-		{Minor, &Version{version: "1.5.1"}, &Version{version: "1.6.3"}, 0},
-		{Minor, &Version{version: "1.5.0"}, &Version{version: "1.2.0"}, 1},
-		{Major, &Version{version: "2.4.2"}, &Version{version: "2.6.4"}, 0},
-		{Major, &Version{version: "2.1.0"}, &Version{version: "1.2.0"}, 1},
-	}
-	for _, test := range tests {
-		t.Run("Downgrade "+test.currVersion.version+" -> "+test.candidateVersion.version, func(t *testing.T) {
-			resVersion, err := test.currVersion.CompareDowngradeAtPosition(*test.candidateVersion, test.position)
-			assert.NoError(t, err)
-			assert.Equal(t, resVersion, test.expected)
-		})
-	}
-}
-
-func TestVersion_IsUpgradeAtPosition(t *testing.T) {
+func TestVersion_CompareAtPosition(t *testing.T) {
 	tests := []struct {
 		position         VersionPosition
 		currVersion      *Version
@@ -117,16 +94,17 @@ func TestVersion_IsUpgradeAtPosition(t *testing.T) {
 		expected         int
 	}{
 		{Patch, &Version{version: "1.2.0"}, &Version{version: "1.2.3"}, 1},
-		{Patch, &Version{version: "1.2.1"}, &Version{version: "1.2.0"}, 0},
+		{Patch, &Version{version: "1.2.1"}, &Version{version: "1.2.0"}, -1},
 		{Minor, &Version{version: "1.5.1"}, &Version{version: "1.6.3"}, 1},
-		{Minor, &Version{version: "1.5.0"}, &Version{version: "1.2.0"}, 0},
+		{Minor, &Version{version: "1.5.0"}, &Version{version: "1.2.0"}, -1},
 		{Major, &Version{version: "2.4.2"}, &Version{version: "3.6.4"}, 1},
-		{Major, &Version{version: "2.1.0"}, &Version{version: "1.2.0"}, 0},
-		{Major, &Version{version: "v2.1.0"}, &Version{version: "v1.2.0"}, 0},
+		{Major, &Version{version: "2.1.0"}, &Version{version: "1.2.0"}, -1},
+		{Major, &Version{version: "v2.1.0"}, &Version{version: "v1.2.0"}, -1},
+		{Major, &Version{version: "v2.1.0"}, &Version{version: "v2.1.0"}, 0},
 	}
 	for _, test := range tests {
 		t.Run("Upgrade "+test.currVersion.version+" -> "+test.candidateVersion.version, func(t *testing.T) {
-			resVersion, err := test.currVersion.CompareUpgradeAtPosition(*test.candidateVersion, test.position)
+			resVersion, err := test.currVersion.CompareAtPosition(*test.candidateVersion, test.position)
 			assert.NoError(t, err)
 			assert.Equal(t, resVersion, test.expected)
 		})
