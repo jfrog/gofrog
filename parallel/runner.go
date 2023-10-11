@@ -14,10 +14,10 @@ type Runner interface {
 	AddTaskWithError(TaskFunc, OnErrorFunc) (int, error)
 	Run()
 	Done()
-	Cancel()
+	Cancel(bool)
 	Errors() map[int]error
 	ActiveThreads() uint32
-	OpenThreads() int
+	OpenThreads() uint32
 	IsStarted() bool
 	SetMaxParallel(int)
 	GetFinishedNotification() chan bool
@@ -39,10 +39,12 @@ type runner struct {
 	tasks chan *task
 	// Tasks counter, used to give each task an identifier (task.num).
 	taskId uint32
-	// A channel that is closed when the runner is cancelled.
-	cancel chan struct{}
-	// Used to make sure the cancel channel is closed only once.
+	// True when Cancel was invoked
+	cancel atomic.Bool
+	// Used to make sure that cancel is called only once.
 	cancelOnce sync.Once
+	// Used to make sure that done is called only once.
+	doneOnce sync.Once
 	// The maximum number of threads running in parallel.
 	maxParallel int
 	// If true, the runner will be cancelled on the first error thrown from a task.
@@ -52,15 +54,15 @@ type runner struct {
 	// A WaitGroup that waits for all the threads to close.
 	threadsWaitGroup sync.WaitGroup
 	// Threads counter, used to give each thread an identifier (threadId).
-	threadCount uint32
+	threadCount atomic.Uint32
 	// The number of open threads.
-	openThreads int
+	openThreads atomic.Uint32
 	// A lock on openThreads.
 	openThreadsLock sync.Mutex
 	// The number of threads currently running tasks.
-	activeThreads uint32
+	activeThreads atomic.Uint32
 	// The number of tasks in the queue.
-	totalTasksInQueue uint32
+	totalTasksInQueue atomic.Uint32
 	// Indicate that the runner has finished.
 	finishedNotifier chan bool
 	// Indicates that the finish channel is closed.
@@ -91,7 +93,7 @@ func NewRunner(maxParallel int, capacity uint, failFast bool) *runner {
 		finishedNotifier: make(chan bool, 1),
 		maxParallel:      consumers,
 		failFast:         failFast,
-		cancel:           make(chan struct{}),
+		cancel:           atomic.Bool{},
 		tasks:            make(chan *task, capacity),
 	}
 	r.errors = make(map[int]error)
@@ -122,14 +124,12 @@ func (r *runner) addTask(t TaskFunc, errorHandler OnErrorFunc) (int, error) {
 	nextCount := atomic.AddUint32(&r.taskId, 1)
 	task := &task{run: t, num: nextCount - 1, onError: errorHandler}
 
-	select {
-	case <-r.cancel:
+	if r.cancel.Load() {
 		return -1, errors.New("runner stopped")
-	default:
-		atomic.AddUint32(&r.totalTasksInQueue, 1)
-		r.tasks <- task
-		return int(task.num), nil
 	}
+	r.totalTasksInQueue.Add(1)
+	r.tasks <- task
+	return int(task.num), nil
 }
 
 // Run r.maxParallel go routines in order to consume all the tasks
@@ -154,7 +154,9 @@ func (r *runner) Run() {
 
 // Done is used to notify that no more tasks will be produced.
 func (r *runner) Done() {
-	close(r.tasks)
+	r.doneOnce.Do(func() {
+		close(r.tasks)
+	})
 }
 
 // GetFinishedNotification returns the finishedNotifier channel, which notifies when the runner is done.
@@ -171,10 +173,14 @@ func (r *runner) IsStarted() bool {
 // Cancel stops the Runner from getting new tasks and empties the tasks queue.
 // No new tasks will be executed, and tasks that already started will continue running and won't be interrupted.
 // If this Runner is already cancelled, then this function will do nothing.
-func (r *runner) Cancel() {
+// force - If true, pending tasks in the queue will not be handled.
+func (r *runner) Cancel(force bool) {
+	// No more adding tasks
+	r.cancel.Store(true)
+	if force {
+		r.Done()
+	}
 	r.cancelOnce.Do(func() {
-		// No more adding tasks
-		close(r.cancel)
 		// Consume all tasks left
 		for len(r.tasks) > 0 {
 			<-r.tasks
@@ -191,12 +197,12 @@ func (r *runner) Errors() map[int]error {
 }
 
 // OpenThreads returns the number of open threads (including idle threads).
-func (r *runner) OpenThreads() int {
-	return r.openThreads
+func (r *runner) OpenThreads() uint32 {
+	return r.openThreads.Load()
 }
 
 func (r *runner) ActiveThreads() uint32 {
-	return r.activeThreads
+	return r.activeThreads.Load()
 }
 
 func (r *runner) SetFinishedNotification(toEnable bool) {
@@ -222,28 +228,28 @@ func (r *runner) SetMaxParallel(newVal int) {
 
 func (r *runner) addThread() {
 	r.threadsWaitGroup.Add(1)
-	nextThreadId := atomic.AddUint32(&r.threadCount, 1) - 1
+	nextThreadId := r.threadCount.Add(1) - 1
 	go func(threadId int) {
 		defer r.threadsWaitGroup.Done()
 		r.openThreadsLock.Lock()
-		r.openThreads++
+		r.openThreads.Add(1)
 		r.openThreadsLock.Unlock()
 
 		// Keep on taking tasks from the queue.
 		for t := range r.tasks {
 			// Increase the total of active threads.
-			atomic.AddUint32(&r.activeThreads, 1)
+			r.activeThreads.Add(1)
 			atomic.AddUint32(&r.started, 1)
 			// Run the task.
 			e := t.run(threadId)
 			// Decrease the total of active threads.
-			atomic.AddUint32(&r.activeThreads, ^uint32(0))
+			r.activeThreads.Add(^uint32(0))
 			// Decrease the total of in progress tasks.
-			atomic.AddUint32(&r.totalTasksInQueue, ^uint32(0))
+			r.totalTasksInQueue.Add(^uint32(0))
 			if r.finishedNotificationEnabled {
 				r.finishedNotifierLock.Lock()
 				// Notify that the runner has finished its job.
-				if r.activeThreads == 0 && r.totalTasksInQueue == 0 {
+				if r.activeThreads.Load() == 0 && r.totalTasksInQueue.Load() == 0 {
 					r.notifyFinished()
 				}
 				r.finishedNotifierLock.Unlock()
@@ -260,15 +266,15 @@ func (r *runner) addThread() {
 				r.errorsLock.Unlock()
 
 				if r.failFast {
-					r.Cancel()
+					r.Cancel(false)
 					break
 				}
 			}
 
 			r.openThreadsLock.Lock()
 			// If the total of open threads is larger than the maximum (maxParallel), then this thread should be closed.
-			if r.openThreads > r.maxParallel {
-				r.openThreads--
+			if int(r.openThreads.Load()) > r.maxParallel {
+				r.openThreads.Add(^uint32(0))
 				r.openThreadsLock.Unlock()
 				break
 			}

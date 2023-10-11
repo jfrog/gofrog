@@ -1,14 +1,29 @@
 package parallel
 
 import (
+	"errors"
 	"fmt"
-	"math"
 	"math/rand"
+	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func TestTask(t *testing.T) {
+var errTest = errors.New("some error")
+
+func TestIsStarted(t *testing.T) {
+	runner := NewBounedRunner(1, false)
+	runner.AddTask(func(i int) error {
+		return nil
+	})
+	runner.Done()
+	runner.Run()
+	assert.True(t, runner.IsStarted())
+}
+
+func TestAddTask(t *testing.T) {
 	const count = 70
 	results := make(chan int, 100)
 
@@ -17,44 +32,152 @@ func TestTask(t *testing.T) {
 	var expectedErrorTotal int
 	for i := 0; i < count; i++ {
 		expectedTotal += i
-		if float64(i) > math.Floor(float64(count)/2) {
+		if float64(i) > float64(count)/2 {
 			expectedErrorTotal += i
 		}
 
 		x := i
-		runner.AddTask(func(i int) error {
+		_, err := runner.AddTask(func(int) error {
 			results <- x
 			time.Sleep(time.Millisecond * time.Duration(rand.Intn(50)))
-			if float64(x) > math.Floor(float64(count)/2) {
+			if float64(x) > float64(count)/2 {
 				return fmt.Errorf("Second half value %d not counted", x)
 			}
 			return nil
 		})
+		assert.NoError(t, err)
 	}
 	runner.Done()
 	runner.Run()
-
-	errs := runner.Errors()
 
 	close(results)
 	var resultsTotal int
 	for result := range results {
 		resultsTotal += result
 	}
-	if resultsTotal != expectedTotal {
-		t.Error("Unexpected results total:", resultsTotal)
-	}
+	assert.Equal(t, expectedTotal, resultsTotal)
 
 	var errorsTotal int
-	for k, v := range errs {
+	for k, v := range runner.Errors() {
 		if v != nil {
 			errorsTotal += k
 		}
 	}
-	if errorsTotal != expectedErrorTotal {
-		t.Error("Unexpected errs total:", errorsTotal)
+	assert.Equal(t, expectedErrorTotal, errorsTotal)
+	assert.NotZero(t, errorsTotal)
+}
+
+func TestAddTaskWithError(t *testing.T) {
+	// Create new runner
+	runner := NewRunner(1, 1, false)
+
+	// Add task with error
+	var receivedError = new(error)
+	onError := func(err error) { *receivedError = err }
+	taskFunc := func(int) error { return errTest }
+	_, err := runner.AddTaskWithError(taskFunc, onError)
+	assert.NoError(t, err)
+
+	// Wait for task to finish
+	runner.Done()
+	runner.Run()
+
+	// Assert error captured
+	assert.Equal(t, errTest, *receivedError)
+	assert.Equal(t, errTest, runner.Errors()[0])
+}
+
+func TestCancel(t *testing.T) {
+	// Create new runner
+	runner := NewBounedRunner(1, false)
+
+	// Cancel to prevent receiving another tasks
+	runner.Cancel(false)
+
+	// Add task and expect error
+	_, err := runner.AddTask(func(int) error { return nil })
+	assert.ErrorContains(t, err, "runner stopped")
+}
+
+func TestForceCancel(t *testing.T) {
+	// Create new runner
+	const capacity = 10
+	runner := NewRunner(1, capacity, true)
+	// Run tasks
+	for i := 0; i < capacity; i++ {
+		taskId := i
+		_, err := runner.AddTask(func(int) error {
+			assert.Less(t, taskId, 9)
+			time.Sleep(100 * time.Millisecond)
+			return nil
+		})
+		assert.NoError(t, err)
 	}
-	if errorsTotal == 0 {
-		t.Error("Unexpected 0 errs total")
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		runner.Run()
+	}()
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		runner.Cancel(true)
+	}()
+	wg.Wait()
+
+	assert.InDelta(t, 5, runner.started, 4)
+}
+
+func TestFailFast(t *testing.T) {
+	// Create new runner with fail-fast
+	runner := NewBounedRunner(1, true)
+
+	// Add task that returns an error
+	_, err := runner.AddTask(func(int) error {
+		return errTest
+	})
+	assert.NoError(t, err)
+
+	// Wait for task to finish
+	runner.Run()
+
+	// Add another task and expect error
+	_, err = runner.AddTask(func(int) error {
+		return nil
+	})
+	assert.ErrorContains(t, err, "runner stopped")
+}
+
+func TestNotifyFinished(t *testing.T) {
+	// Create new runner
+	runner := NewBounedRunner(1, false)
+	runner.SetFinishedNotification(true)
+
+	// Cancel to prevent receiving another tasks
+	runner.Cancel(false)
+	<-runner.GetFinishedNotification()
+}
+
+func TestMaxParallel(t *testing.T) {
+	// Create new runner with capacity of 10 and max parallelism of 3
+	const capacity = 10
+	const parallelism = 3
+	runner := NewRunner(parallelism, capacity, false)
+
+	// Run tasks in parallel
+	for i := 0; i < capacity; i++ {
+		_, err := runner.AddTask(func(int) error {
+			// Assert in range between 1 and 3
+			assert.InDelta(t, 2, runner.ActiveThreads(), 1)
+			assert.InDelta(t, 2, runner.OpenThreads(), 1)
+			time.Sleep(100 * time.Millisecond)
+			return nil
+		})
+		assert.NoError(t, err)
 	}
+
+	// Wait for tasks to finish
+	runner.Done()
+	runner.Run()
+	assert.Equal(t, uint32(capacity), runner.started)
 }
