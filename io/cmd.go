@@ -94,9 +94,11 @@ func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdO
 			for _, regExp := range regExpStruct {
 				matched := regExp.RegExp.Match([]byte(line))
 				if matched {
-					regExp.MatchedResults = regExp.RegExp.FindStringSubmatch(line)
-					regExp.Line = line
-					line, err = regExp.ExecFunc(regExp)
+					results := CmdOutputPattern{
+						MatchedResults: regExp.RegExp.FindStringSubmatch(line),
+						Line:           line,
+					}
+					line, err = regExp.ExecFunc(&results)
 					if err != nil {
 						errChan <- err
 					}
@@ -117,8 +119,11 @@ func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdO
 			for _, regExp := range regExpStruct {
 				matched := regExp.RegExp.Match([]byte(line))
 				if matched {
-					regExp.MatchedResults = regExp.RegExp.FindStringSubmatch(line)
-					regExp.Line = line
+					results := CmdOutputPattern{
+						MatchedResults: regExp.RegExp.FindStringSubmatch(line),
+						Line:           line,
+					}
+					line, err = regExp.ExecFunc(&results)
 					line, scannerError = regExp.ExecFunc(regExp)
 					if scannerError != nil {
 						errChan <- scannerError
