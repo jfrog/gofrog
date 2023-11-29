@@ -89,6 +89,7 @@ func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdO
 		return
 	}
 	errChan := make(chan error)
+	stdoutBuilder := strings.Builder{}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -97,9 +98,11 @@ func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdO
 			if prompt {
 				fmt.Fprintf(os.Stderr, line+"\n")
 			}
-			stdOut += line + "\n"
+			stdoutBuilder.WriteString(line)
+			stdoutBuilder.WriteRune('\n')
 		}
 	}()
+	stderrBuilder := strings.Builder{}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -108,7 +111,8 @@ func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdO
 			if prompt {
 				fmt.Fprintf(os.Stderr, line+"\n")
 			}
-			errorOut += line + "\n"
+			stderrBuilder.WriteString(line)
+			stderrBuilder.WriteRune('\n')
 			if hasError {
 				break
 			}
@@ -120,12 +124,11 @@ func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdO
 		close(errChan)
 	}()
 
-	for channelErr := range errChan {
-		err = errors.Join(err, channelErr)
-	}
-	if err != nil {
+	for err = range errChan {
 		return
 	}
+	stdOut = stdoutBuilder.String()
+	errorOut = stderrBuilder.String()
 
 	err = cmd.Wait()
 	if err != nil {

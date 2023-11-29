@@ -12,24 +12,24 @@ var matchAllRegexp = regexp.MustCompile(".*")
 var errParsing = errors.New("parsing error")
 
 func TestRunCmdWithOutputParser(t *testing.T) {
-	config := NewCommand("git", "", []string{"status"})
+	config := NewCommand("go", "", []string{"version"})
 	stdout, stderr, exitOk, err := RunCmdWithOutputParser(config, false, &CmdOutputPattern{
 		RegExp:   matchAllRegexp,
 		ExecFunc: func(pattern *CmdOutputPattern) (string, error) { return pattern.Line, nil },
 	})
 	assert.NoError(t, err)
 	assert.True(t, exitOk)
-	assert.Contains(t, stdout, "On branch")
+	assert.Contains(t, stdout, "go version")
 	assert.Empty(t, stderr)
 }
 
 func TestRunCmdWithOutputParserError(t *testing.T) {
-	config := NewCommand("git", "", []string{"status"})
+	config := NewCommand("go", "", []string{"version"})
 	_, _, exitOk, err := RunCmdWithOutputParser(config, false, &CmdOutputPattern{
 		RegExp:   matchAllRegexp,
 		ExecFunc: func(pattern *CmdOutputPattern) (string, error) { return pattern.Line, errParsing },
 	})
-	assert.ErrorContains(t, err, "parsing error\nparsing error")
+	assert.ErrorContains(t, err, "parsing error")
 	assert.False(t, exitOk)
 }
 
