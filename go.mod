@@ -1,6 +1,6 @@
 module github.com/jfrog/gofrog
 
-go 1.19
+go 1.20
 
 require (
 	github.com/mholt/archiver/v3 v3.5.1
