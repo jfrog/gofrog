@@ -2,12 +2,14 @@ package io
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"regexp"
+	"strings"
 	"sync"
 )
 
@@ -87,54 +89,34 @@ func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdO
 		return
 	}
 	errChan := make(chan error)
+	stdoutBuilder := strings.Builder{}
 	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		for stdoutReader.Scan() {
-			line := stdoutReader.Text()
-			for _, regExp := range regExpStruct {
-				matched := regExp.RegExp.Match([]byte(line))
-				if matched {
-					regExp.MatchedResults = regExp.RegExp.FindStringSubmatch(line)
-					regExp.Line = line
-					line, err = regExp.ExecFunc(regExp)
-					if err != nil {
-						errChan <- err
-					}
-				}
-			}
+			line, _ := processLine(regExpStruct, stdoutReader.Text(), errChan)
 			if prompt {
 				fmt.Fprintf(os.Stderr, line+"\n")
 			}
-			stdOut += line + "\n"
+			stdoutBuilder.WriteString(line)
+			stdoutBuilder.WriteRune('\n')
 		}
-		wg.Done()
 	}()
+	stderrBuilder := strings.Builder{}
 	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		for stderrReader.Scan() {
-			line := stderrReader.Text()
-			var scannerError error
-			for _, regExp := range regExpStruct {
-				matched := regExp.RegExp.Match([]byte(line))
-				if matched {
-					regExp.MatchedResults = regExp.RegExp.FindStringSubmatch(line)
-					regExp.Line = line
-					line, scannerError = regExp.ExecFunc(regExp)
-					if scannerError != nil {
-						errChan <- scannerError
-						break
-					}
-				}
-			}
+			line, hasError := processLine(regExpStruct, stderrReader.Text(), errChan)
 			if prompt {
 				fmt.Fprintf(os.Stderr, line+"\n")
 			}
-			errorOut += line + "\n"
-			if scannerError != nil {
+			stderrBuilder.WriteString(line)
+			stderrBuilder.WriteRune('\n')
+			if hasError {
 				break
 			}
 		}
-		wg.Done()
 	}()
 
 	go func() {
@@ -145,6 +127,8 @@ func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdO
 	for err = range errChan {
 		return
 	}
+	stdOut = stdoutBuilder.String()
+	errorOut = stderrBuilder.String()
 
 	err = cmd.Wait()
 	if err != nil {
@@ -154,6 +138,34 @@ func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdO
 	if _, ok := err.(*exec.ExitError); ok {
 		// The program has exited with an exit code != 0
 		exitOk = false
+	}
+	return
+}
+
+// Run all of the input regExpStruct array on the input stdout or stderr line.
+// If an error occurred, add it to the error channel.
+// regExpStruct - Array of command output patterns to process the line
+// line - string line from stdout or stderr
+// errChan - if an error occurred, add it to this channel
+func processLine(regExpStruct []*CmdOutputPattern, line string, errChan chan error) (processedLine string, hasError bool) {
+	var err error
+	processedLine = line
+	for _, regExp := range regExpStruct {
+		if !regExp.RegExp.MatchString(processedLine) {
+			continue
+		}
+		results := CmdOutputPattern{
+			RegExp:         regExp.RegExp,
+			MatchedResults: regExp.RegExp.FindStringSubmatch(processedLine),
+			Line:           processedLine,
+			ExecFunc:       regExp.ExecFunc,
+		}
+		processedLine, err = regExp.ExecFunc(&results)
+		if err != nil {
+			errChan <- err
+			hasError = true
+			break
+		}
 	}
 	return
 }
@@ -191,4 +203,60 @@ type CmdOutputPattern struct {
 	MatchedResults []string
 	Line           string
 	ExecFunc       func(pattern *CmdOutputPattern) (string, error)
+}
+
+type Command struct {
+	Executable string
+	CmdName    string
+	CmdArgs    []string
+	Dir        string
+	StrWriter  io.WriteCloser
+	ErrWriter  io.WriteCloser
+}
+
+func NewCommand(executable, cmdName string, cmdArgs []string) *Command {
+	return &Command{Executable: executable, CmdName: cmdName, CmdArgs: cmdArgs}
+}
+
+func (config *Command) RunWithOutput() (data []byte, err error) {
+	cmd := config.GetCmd()
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err = cmd.Run()
+	if err != nil {
+		return nil, fmt.Errorf("failed running command: '%s %s' with error: %s - %s",
+			cmd.Dir,
+			strings.Join(cmd.Args, " "),
+			err.Error(),
+			stderr.String(),
+		)
+	}
+	return stdout.Bytes(), nil
+}
+
+func (config *Command) GetCmd() (cmd *exec.Cmd) {
+	var cmdStr []string
+	if config.CmdName != "" {
+		cmdStr = append(cmdStr, config.CmdName)
+	}
+	if config.CmdArgs != nil && len(config.CmdArgs) > 0 {
+		cmdStr = append(cmdStr, config.CmdArgs...)
+	}
+	cmd = exec.Command(config.Executable, cmdStr...)
+	cmd.Dir = config.Dir
+	return
+}
+
+func (config *Command) GetEnv() map[string]string {
+	return map[string]string{}
+}
+
+func (config *Command) GetStdWriter() io.WriteCloser {
+	return config.StrWriter
+}
+
+func (config *Command) GetErrWriter() io.WriteCloser {
+	return config.ErrWriter
 }
