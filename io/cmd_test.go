@@ -13,11 +13,16 @@ var errParsing = errors.New("parsing error")
 
 func TestRunCmdWithOutputParser(t *testing.T) {
 	config := NewCommand("go", "", []string{"version"})
+	parserCalled := false
 	stdout, stderr, exitOk, err := RunCmdWithOutputParser(config, false, &CmdOutputPattern{
-		RegExp:   matchAllRegexp,
-		ExecFunc: func(pattern *CmdOutputPattern) (string, error) { return pattern.Line, nil },
+		RegExp: matchAllRegexp,
+		ExecFunc: func(pattern *CmdOutputPattern) (string, error) {
+			parserCalled = true
+			return pattern.Line, nil
+		},
 	})
 	assert.NoError(t, err)
+	assert.True(t, parserCalled)
 	assert.True(t, exitOk)
 	assert.Contains(t, stdout, "go version")
 	assert.Empty(t, stderr)
@@ -34,24 +39,25 @@ func TestRunCmdWithOutputParserError(t *testing.T) {
 }
 
 var processLineCases = []struct {
+	name              string
 	cmdOutputPatterns []*CmdOutputPattern
 	line              string
 	expectedOutput    string
 	expectError       bool
 }{
-	{[]*CmdOutputPattern{}, "", "", false},
+	{"Empty", []*CmdOutputPattern{}, "", "", false},
 
-	{[]*CmdOutputPattern{{
+	{"Simple", []*CmdOutputPattern{{
 		RegExp:   matchAllRegexp,
 		ExecFunc: func(pattern *CmdOutputPattern) (string, error) { return pattern.Line, nil },
 	}}, "hello", "hello", false},
 
-	{[]*CmdOutputPattern{{
+	{"Append character once", []*CmdOutputPattern{{
 		RegExp:   matchAllRegexp,
 		ExecFunc: func(pattern *CmdOutputPattern) (string, error) { return pattern.Line[1:], nil },
 	}}, "hello", "ello", false},
 
-	{[]*CmdOutputPattern{
+	{"Append character twice", []*CmdOutputPattern{
 		{
 			RegExp:   matchAllRegexp,
 			ExecFunc: func(pattern *CmdOutputPattern) (string, error) { return pattern.Line + "l", nil },
@@ -62,7 +68,7 @@ var processLineCases = []struct {
 		},
 	}, "hel", "hello", false},
 
-	{[]*CmdOutputPattern{
+	{"Doesn't match", []*CmdOutputPattern{
 		{
 			RegExp:   regexp.MustCompile("doesn't match"),
 			ExecFunc: func(pattern *CmdOutputPattern) (string, error) { return pattern.Line + "aaaaaa", nil },
@@ -73,7 +79,7 @@ var processLineCases = []struct {
 		},
 	}, "hell", "hello", false},
 
-	{[]*CmdOutputPattern{{
+	{"Parsing error", []*CmdOutputPattern{{
 		RegExp:   matchAllRegexp,
 		ExecFunc: func(pattern *CmdOutputPattern) (string, error) { return "", errParsing },
 	}}, "hello", "", true},
@@ -81,7 +87,7 @@ var processLineCases = []struct {
 
 func TestProcessLine(t *testing.T) {
 	for _, testCase := range processLineCases {
-		t.Run("", func(t *testing.T) {
+		t.Run(testCase.name, func(t *testing.T) {
 			errChan := make(chan error, 1)
 			defer close(errChan)
 			processedLine, hasErrors := processLine(testCase.cmdOutputPatterns, testCase.line, errChan)

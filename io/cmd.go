@@ -151,20 +151,20 @@ func processLine(regExpStruct []*CmdOutputPattern, line string, errChan chan err
 	var err error
 	processedLine = line
 	for _, regExp := range regExpStruct {
-		matched := regExp.RegExp.MatchString(processedLine)
-		if matched {
-			results := CmdOutputPattern{
-				RegExp:         regExp.RegExp,
-				MatchedResults: regExp.RegExp.FindStringSubmatch(processedLine),
-				Line:           processedLine,
-				ExecFunc:       regExp.ExecFunc,
-			}
-			processedLine, err = regExp.ExecFunc(&results)
-			if err != nil {
-				errChan <- err
-				hasError = true
-				break
-			}
+		if !regExp.RegExp.MatchString(processedLine) {
+			continue
+		}
+		results := CmdOutputPattern{
+			RegExp:         regExp.RegExp,
+			MatchedResults: regExp.RegExp.FindStringSubmatch(processedLine),
+			Line:           processedLine,
+			ExecFunc:       regExp.ExecFunc,
+		}
+		processedLine, err = regExp.ExecFunc(&results)
+		if err != nil {
+			errChan <- err
+			hasError = true
+			break
 		}
 	}
 	return
