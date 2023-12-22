@@ -181,3 +181,49 @@ func TestMaxParallel(t *testing.T) {
 	runner.Run()
 	assert.Equal(t, uint32(capacity), runner.started)
 }
+
+func TestResetFinishNotification(t *testing.T) {
+	// Create 2 runners
+	const capacity = 10
+	const parallelism = 3
+	runnerOne := NewRunner(parallelism, capacity, false)
+	runnerOne.SetFinishedNotification(true)
+	runnerTwo := NewRunner(parallelism, capacity, false)
+	runnerTwo.SetFinishedNotification(true)
+
+	// Add 10 tasks to runner one. Each task provides tasks to runner two.
+	for i := 0; i < capacity; i++ {
+		_, err := runnerOne.AddTask(func(int) error {
+			time.Sleep(time.Millisecond * 10)
+			_, err := runnerTwo.AddTask(func(int) error {
+				time.Sleep(time.Millisecond)
+				return nil
+			})
+			assert.NoError(t, err)
+			return nil
+		})
+		assert.NoError(t, err)
+	}
+
+	// Create a goroutine waiting for the finish notification of the first runner before running "Done".
+	go func() {
+		<-runnerOne.GetFinishedNotification()
+		runnerOne.Done()
+	}()
+
+	// Start running the second runner in a different goroutine to make it non-blocking.
+	go func() {
+		runnerTwo.Run()
+	}()
+
+	// Run the first runner. This is a blocking method.
+	runnerOne.Run()
+
+	// Reset runner two's finish notification to ensure we receive it only after all tasks assigned to runner two are completed.
+	runnerTwo.ResetFinishNotification()
+
+	// Receive the finish notification and ensure that we have truly completed the task.
+	<-runnerTwo.GetFinishedNotification()
+	assert.Zero(t, runnerTwo.ActiveThreads())
+	runnerTwo.Done()
+}

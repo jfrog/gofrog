@@ -22,6 +22,7 @@ type Runner interface {
 	SetMaxParallel(int)
 	GetFinishedNotification() chan bool
 	SetFinishedNotification(bool)
+	ResetFinishNotification()
 }
 
 type TaskFunc func(int) error
@@ -207,6 +208,18 @@ func (r *runner) ActiveThreads() uint32 {
 
 func (r *runner) SetFinishedNotification(toEnable bool) {
 	r.finishedNotificationEnabled = toEnable
+}
+
+// Recreates the finish notification channel.
+// This method helps manage a scenario involving two runners: "1" assigns tasks to "2".
+// Runner "2" might occasionally encounter periods without assigned tasks.
+// As a result, the finish notification for "2" might be triggered.
+// To tackle this issue, use the ResetFinishNotification after all tasks assigned to "1" have been completed.
+func (r *runner) ResetFinishNotification() {
+	r.finishedNotifierLock.Lock()
+	defer r.finishedNotifierLock.Unlock()
+	r.finishedNotifier = make(chan bool, 1)
+	r.finishedNotifierChannelClosed = false
 }
 
 func (r *runner) SetMaxParallel(newVal int) {
