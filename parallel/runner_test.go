@@ -182,7 +182,7 @@ func TestMaxParallel(t *testing.T) {
 	assert.Equal(t, uint32(capacity), runner.started)
 }
 
-func TestResetFinishNotification(t *testing.T) {
+func TestResetFinishNotificationIfActive(t *testing.T) {
 	// Create 2 runners
 	const capacity = 10
 	const parallelism = 3
@@ -194,7 +194,7 @@ func TestResetFinishNotification(t *testing.T) {
 	// Add 10 tasks to runner one. Each task provides tasks to runner two.
 	for i := 0; i < capacity; i++ {
 		_, err := runnerOne.AddTask(func(int) error {
-			time.Sleep(time.Millisecond * 10)
+			time.Sleep(time.Millisecond * 100)
 			_, err := runnerTwo.AddTask(func(int) error {
 				time.Sleep(time.Millisecond)
 				return nil
@@ -220,7 +220,7 @@ func TestResetFinishNotification(t *testing.T) {
 	runnerOne.Run()
 
 	// Reset runner two's finish notification to ensure we receive it only after all tasks assigned to runner two are completed.
-	runnerTwo.ResetFinishNotification()
+	runnerTwo.ResetFinishNotificationIfActive()
 
 	// Receive the finish notification and ensure that we have truly completed the task.
 	<-runnerTwo.GetFinishedNotification()
