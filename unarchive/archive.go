@@ -3,13 +3,13 @@ package unarchive
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/jfrog/archiver/v3"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/jfrog/gofrog/datastructures"
-	"github.com/mholt/archiver/v3"
 )
 
 type Unarchiver struct {
