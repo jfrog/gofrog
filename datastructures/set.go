@@ -13,6 +13,14 @@ func MakeSet[T comparable]() *Set[T] {
 	}
 }
 
+func MakeSetFromElements[T comparable](elements ...T) *Set[T] {
+	set := MakeSet[T]()
+	for _, element := range elements {
+		set.Add(element)
+	}
+	return set
+}
+
 func (set *Set[T]) Exists(key T) bool {
 	_, exists := set.container[key]
 	return exists
@@ -20,6 +28,12 @@ func (set *Set[T]) Exists(key T) bool {
 
 func (set *Set[T]) Add(key T) {
 	set.container[key] = struct{}{}
+}
+
+func (set *Set[T]) AddElements(elements ...T) {
+	for _, element := range elements {
+		set.Add(element)
+	}
 }
 
 func (set *Set[T]) Remove(key T) error {
