@@ -14,6 +14,7 @@ import (
 
 type Unarchiver struct {
 	BypassInspection bool
+	StripComponents  int
 }
 
 var supportedArchives = []archiver.ExtensionChecker{
@@ -39,7 +40,7 @@ func (u *Unarchiver) IsSupportedArchive(filePath string) bool {
 // archiveName - The archive file name
 // destinationPath - The extraction destination directory
 func (u *Unarchiver) Unarchive(archivePath, archiveName, destinationPath string) error {
-	archive, err := byExtension(archiveName)
+	archive, err := u.byExtension(archiveName)
 	if err != nil {
 		return err
 	}
@@ -52,11 +53,12 @@ func (u *Unarchiver) Unarchive(archivePath, archiveName, destinationPath string)
 			return err
 		}
 	}
+
 	return unarchiver.Unarchive(archivePath, destinationPath)
 }
 
 // Instead of using 'archiver.byExtension' that by default sets OverwriteExisting to false, we implement our own.
-func byExtension(filename string) (interface{}, error) {
+func (u *Unarchiver) byExtension(filename string) (interface{}, error) {
 	var ec interface{}
 	for _, c := range supportedArchives {
 		if err := c.CheckExt(filename); err == nil {
@@ -68,45 +70,54 @@ func byExtension(filename string) (interface{}, error) {
 	case *archiver.Rar:
 		archiveInstance := archiver.NewRar()
 		archiveInstance.OverwriteExisting = true
+		archiveInstance.StripComponents = u.StripComponents
 		return archiveInstance, nil
 	case *archiver.Tar:
 		archiveInstance := archiver.NewTar()
 		archiveInstance.OverwriteExisting = true
+		archiveInstance.StripComponents = u.StripComponents
 		return archiveInstance, nil
 	case *archiver.TarBrotli:
 		archiveInstance := archiver.NewTarBrotli()
 		archiveInstance.OverwriteExisting = true
+		archiveInstance.StripComponents = u.StripComponents
 		return archiveInstance, nil
 	case *archiver.TarBz2:
 		archiveInstance := archiver.NewTarBz2()
 		archiveInstance.OverwriteExisting = true
+		archiveInstance.StripComponents = u.StripComponents
 		return archiveInstance, nil
 	case *archiver.TarGz:
 		archiveInstance := archiver.NewTarGz()
 		archiveInstance.OverwriteExisting = true
+		archiveInstance.StripComponents = u.StripComponents
 		return archiveInstance, nil
 	case *archiver.TarLz4:
 		archiveInstance := archiver.NewTarLz4()
 		archiveInstance.OverwriteExisting = true
+		archiveInstance.StripComponents = u.StripComponents
 		return archiveInstance, nil
 	case *archiver.TarSz:
 		archiveInstance := archiver.NewTarSz()
 		archiveInstance.OverwriteExisting = true
+		archiveInstance.StripComponents = u.StripComponents
 		return archiveInstance, nil
 	case *archiver.TarXz:
 		archiveInstance := archiver.NewTarXz()
 		archiveInstance.OverwriteExisting = true
+		archiveInstance.StripComponents = u.StripComponents
 		return archiveInstance, nil
 	case *archiver.TarZstd:
 		archiveInstance := archiver.NewTarZstd()
 		archiveInstance.OverwriteExisting = true
+		archiveInstance.StripComponents = u.StripComponents
 		return archiveInstance, nil
 	case *archiver.Zip:
 		archiveInstance := archiver.NewZip()
 		archiveInstance.OverwriteExisting = true
+		archiveInstance.StripComponents = u.StripComponents
 		return archiveInstance, nil
 	case *archiver.Gz:
-		archiver.NewGz()
 		return archiver.NewGz(), nil
 	case *archiver.Bz2:
 		return archiver.NewBz2(), nil
