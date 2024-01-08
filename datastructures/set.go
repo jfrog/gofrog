@@ -13,7 +13,7 @@ func MakeSet[T comparable]() *Set[T] {
 	}
 }
 
-func MakeSetFromSlice[T comparable](slice []T) *Set[T] {
+func MakeSetFromSlice[T comparable](slice ...T) *Set[T] {
 	set := MakeSet[T]()
 	for _, object := range slice {
 		set.Add(object)
@@ -30,7 +30,7 @@ func (set *Set[T]) Add(key T) {
 	set.container[key] = struct{}{}
 }
 
-func (set *Set[T]) AddSlice(slice []T) {
+func (set *Set[T]) AddSlice(slice ...T) {
 	for _, object := range slice {
 		set.Add(object)
 	}
