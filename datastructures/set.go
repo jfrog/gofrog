@@ -13,6 +13,14 @@ func MakeSet[T comparable]() *Set[T] {
 	}
 }
 
+func MakeSetFromSlice[T comparable](slice []T) *Set[T] {
+	set := MakeSet[T]()
+	for _, object := range slice {
+		set.Add(object)
+	}
+	return set
+}
+
 func (set *Set[T]) Exists(key T) bool {
 	_, exists := set.container[key]
 	return exists
