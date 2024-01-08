@@ -10,19 +10,20 @@ import (
 
 func TestUnarchive(t *testing.T) {
 	tests := []string{"zip", "tar", "tar.gz"}
+	uarchiver := Unarchiver{}
 	for _, extension := range tests {
 		t.Run(extension, func(t *testing.T) {
 			// Create temp directory
 			tmpDir, createTempDirCallback := createTempDirWithCallbackAndAssert(t)
 			defer createTempDirCallback()
 			// Run unarchive on archive created on Unix
-			err := runUnarchive(t, "unix."+extension, "archives", filepath.Join(tmpDir, "unix"))
+			err := runUnarchive(t, uarchiver, "unix."+extension, "archives", filepath.Join(tmpDir, "unix"))
 			assert.NoError(t, err)
 			assert.FileExists(t, filepath.Join(tmpDir, "unix", "link"))
 			assert.FileExists(t, filepath.Join(tmpDir, "unix", "dir", "file"))
 
 			// Run unarchive on archive created on Windows
-			err = runUnarchive(t, "win."+extension, "archives", filepath.Join(tmpDir, "win"))
+			err = runUnarchive(t, uarchiver, "win."+extension, "archives", filepath.Join(tmpDir, "win"))
 			assert.NoError(t, err)
 			assert.FileExists(t, filepath.Join(tmpDir, "win", "link.lnk"))
 			assert.FileExists(t, filepath.Join(tmpDir, "win", "dir", "file.txt"))
@@ -41,6 +42,7 @@ var unarchiveSymlinksCases = []struct {
 
 func TestUnarchiveSymlink(t *testing.T) {
 	testExtensions := []string{"zip", "tar", "tar.gz"}
+	uarchiver := Unarchiver{}
 	for _, extension := range testExtensions {
 		t.Run(extension, func(t *testing.T) {
 			for _, testCase := range unarchiveSymlinksCases {
@@ -50,7 +52,7 @@ func TestUnarchiveSymlink(t *testing.T) {
 					defer createTempDirCallback()
 
 					// Run unarchive
-					err := runUnarchive(t, testCase.prefix+"."+extension, "archives", tmpDir)
+					err := runUnarchive(t, uarchiver, testCase.prefix+"."+extension, "archives", tmpDir)
 					assert.NoError(t, err)
 
 					// Assert the all expected files were extracted
@@ -77,6 +79,8 @@ func TestUnarchiveZipSlip(t *testing.T) {
 		{"softlink-uncle", []string{"zip", "tar", "tar.gz"}, "a link can't lead to an ancestor directory"},
 		{"hardlink-tilde", []string{"tar", "tar.gz"}, "walking hardlink: illegal link path in archive: '~/../../../../../../../../../Users/Shared/sharedFile.txt'"},
 	}
+
+	uarchiver := Unarchiver{}
 	for _, test := range tests {
 		t.Run(test.testType, func(t *testing.T) {
 			// Create temp directory
@@ -84,7 +88,7 @@ func TestUnarchiveZipSlip(t *testing.T) {
 			defer createTempDirCallback()
 			for _, archive := range test.archives {
 				// Unarchive and make sure an error returns
-				err := runUnarchive(t, test.testType+"."+archive, "zipslip", tmpDir)
+				err := runUnarchive(t, uarchiver, test.testType+"."+archive, "zipslip", tmpDir)
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), test.errorSuffix)
 			}
@@ -92,8 +96,31 @@ func TestUnarchiveZipSlip(t *testing.T) {
 	}
 }
 
-func runUnarchive(t *testing.T, archiveFileName, sourceDir, targetDir string) error {
+func TestUnarchiveWithStripComponents(t *testing.T) {
+	tests := []string{"zip", "tar", "tar.gz"}
 	uarchiver := Unarchiver{}
+	uarchiver.StripComponents = 1
+	for _, extension := range tests {
+		t.Run(extension, func(t *testing.T) {
+			// Create temp directory
+			tmpDir, createTempDirCallback := createTempDirWithCallbackAndAssert(t)
+			defer createTempDirCallback()
+			// Run unarchive on archive created on Unix
+			err := runUnarchive(t, uarchiver, "strip-components."+extension, "archives", filepath.Join(tmpDir, "unix"))
+			assert.NoError(t, err)
+			assert.DirExists(t, filepath.Join(tmpDir, "unix", "nested_folder_1"))
+			assert.DirExists(t, filepath.Join(tmpDir, "unix", "nested_folder_2"))
+
+			// Run unarchive on archive created on Windows
+			err = runUnarchive(t, uarchiver, "strip-components."+extension, "archives", filepath.Join(tmpDir, "win"))
+			assert.NoError(t, err)
+			assert.DirExists(t, filepath.Join(tmpDir, "win", "nested_folder_1"))
+			assert.DirExists(t, filepath.Join(tmpDir, "win", "nested_folder_2"))
+		})
+	}
+}
+
+func runUnarchive(t *testing.T, uarchiver Unarchiver, archiveFileName, sourceDir, targetDir string) error {
 	archivePath := filepath.Join("testdata", sourceDir, archiveFileName)
 	assert.True(t, uarchiver.IsSupportedArchive(archivePath))
 	return uarchiver.Unarchive(filepath.Join("testdata", sourceDir, archiveFileName), archiveFileName, targetDir)
