@@ -30,6 +30,12 @@ func (set *Set[T]) Add(key T) {
 	set.container[key] = struct{}{}
 }
 
+func (set *Set[T]) AddSlice(slice []T) {
+	for _, object := range slice {
+		set.Add(object)
+	}
+}
+
 func (set *Set[T]) Remove(key T) error {
 	_, exists := set.container[key]
 	if !exists {
