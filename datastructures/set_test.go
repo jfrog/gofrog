@@ -36,12 +36,12 @@ func TestSetToSlice(t *testing.T) {
 	assert.Contains(t, slice, 7)
 }
 
-func TestMakeSetFromSlice(t *testing.T) {
+func TestMakeSetFromElements(t *testing.T) {
 	intSlice := []int{1, 2, 3}
-	intSet := MakeSetFromSlice(intSlice)
+	intSet := MakeSetFromElements(intSlice...)
 	assert.ElementsMatch(t, intSet.ToSlice(), intSlice)
 
 	stringSlice := []string{"frog", "frogger", "froggy"}
-	stringSet := MakeSetFromSlice(stringSlice)
+	stringSet := MakeSetFromElements(stringSlice...)
 	assert.ElementsMatch(t, stringSet.ToSlice(), stringSlice)
 }
