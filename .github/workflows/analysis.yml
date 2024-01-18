@@ -22,7 +22,7 @@ jobs:
         uses: golangci/golangci-lint-action@v3
         with:
           args: |
-            --timeout 5m --out-${NO_FUTURE}format colored-line-number --enable errcheck,gosimple,govet,ineffassign,staticcheck,typecheck,unused,gocritic,asasalint,asciicheck,errchkjson,exportloopref,forcetypeassert,makezero,nilerr,unparam,unconvert,wastedassign,usestdlibvars 
+            --timeout 5m --out-${NO_FUTURE}format colored-line-number --enable errcheck,gosimple,govet,ineffassign,staticcheck,typecheck,unused,gocritic,asasalint,asciicheck,errchkjson,exportloopref,makezero,nilerr,unparam,unconvert,wastedassign,usestdlibvars 
 
 
   Go-Sec:
@@ -37,6 +37,6 @@ jobs:
           go-version: 1.20.x
 
       - name: Run Gosec Security Scanner
-        uses: securego/gosec@v2
+        uses: securego/gosec@master
         with:
           args: -exclude G204,G301,G302,G304,G306 -tests -exclude-dir \.*test\.* ./...

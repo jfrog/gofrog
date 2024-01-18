@@ -47,7 +47,6 @@ func TestFanoutRead(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	sum1 := results[0].([]byte)
 	sum1, ok := results[0].([]byte)
 	assert.True(t, ok)
 	sum2, ok := results[1].([]byte)
