@@ -56,8 +56,8 @@ func TestFanoutRead(t *testing.T) {
 	sum2str := hex.EncodeToString(sum2)
 	sum3str := hex.EncodeToString(sum3)
 
-	if !(sum1str == sum2str && sum1str == sum3str) {
-		t.Errorf("Sum1 %s and sum2 %s and sum3 %s are not the same", sum1str, sum2str, sum3str)
+	if sum1str != sum2str || sum1str != sum3str {
+		t.Errorf("Sum1 %s, Sum2 %s, and Sum3 %s are not all the same", sum1str, sum2str, sum3str)
 	}
 
 	if sum1str != sha2sum {
