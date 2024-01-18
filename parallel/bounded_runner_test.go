@@ -207,7 +207,7 @@ func createSuccessfulFlowTaskFunc(num int, result chan int) TaskFunc {
 func createTaskWithErrorFunc(num int, result chan int) TaskFunc {
 	return func(threadId int) error {
 		if num > 50 {
-			return fmt.Errorf("num: %d, above 50 going to stop.", num)
+			return fmt.Errorf("num: %d, above 50 going to stop", num)
 		}
 		result <- num
 		time.Sleep(time.Millisecond * time.Duration(rand.Intn(50)))

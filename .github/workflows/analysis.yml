@@ -1,31 +1,43 @@
-name: "Static Analysis"
-on: ["push", "pull_request"]
+name: Static Code Analysis
+on:
+  push:
+    branches:
+      - "**"
+    tags-ignore:
+      - "**"
+  pull_request:
 jobs:
-  Static-Check:
+  go-analysis:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Source
-        uses: actions/checkout@v3
-      - name: Install Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.20.x
-      - name: Static Code Analysis
-        uses: dominikh/staticcheck-action@v1
-        with:
-          install-go: false
+      - uses: actions/checkout@v4
 
-  Go-Sec:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Source
-        uses: actions/checkout@v3
-      - name: Install Go
-        uses: actions/setup-go@v3
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
           go-version: 1.20.x
-      - name: Install gosec
-        run: curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
-      - name: Run gosec
-        # Temporary ignoring G301,G302,G306
-        run: gosec -exclude=G204,G301,G302,G304,G306 -exclude-dir=\.*test\.* ./...
+          cache: false
+
+      - name: Static Code Analysis
+        uses: golangci/golangci-lint-action@v3
+        with:
+          args: |
+            --timeout 5m --out-${NO_FUTURE}format colored-line-number --enable gosec,errcheck,gosimple,govet,ineffassign,staticcheck,typecheck,unused,gocritic,asasalint,asciicheck,errchkjson,exportloopref,forcetypeassert,makezero,nilerr,unparam,unconvert,wastedassign,usestdlibvars
+
+  bash-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          ignore_paths: "*test*"
+
+  check-spelling:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check spelling
+        uses: crate-ci/typos@master

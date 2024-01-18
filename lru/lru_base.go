@@ -65,7 +65,7 @@ func (c *cacheBase) Get(key string) (value interface{}, ok bool) {
 	return nil, false
 }
 
-// Updates element's value without updating it's "Least-Recently-Used" status
+// Updates element's value without updating its "Least-Recently-Used" status
 func (c *cacheBase) UpdateElement(key string, value interface{}) {
 	if ee, ok := c.cache[key]; ok {
 		ee.Value.(*entry).value = value

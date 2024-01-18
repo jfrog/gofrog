@@ -53,7 +53,7 @@ func (c *Cache) Get(key string) (value interface{}, ok bool) {
 	return c.cache.Get(key)
 }
 
-// Updates element's value without updating it's "Least-Recently-Used" status
+// Updates element's value without updating its "Least-Recently-Used" status
 func (c *Cache) UpdateElement(key string, value interface{}) {
 	if !c.noSync {
 		c.lock.Lock()

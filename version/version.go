@@ -69,7 +69,7 @@ func compareTokens(ver1Token, ver2Token string) int {
 		return 0
 	}
 
-	// Ignoring error because we strip all the non numeric values in advance.
+	// Ignoring error because we strip all the non-numeric values in advance.
 	ver1Number, ver1Suffix := splitNumberAndSuffix(ver1Token)
 	ver1TokenInt, _ := strconv.Atoi(ver1Number)
 	ver2Number, ver2Suffix := splitNumberAndSuffix(ver2Token)

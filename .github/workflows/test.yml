@@ -1,23 +1,21 @@
-name: Tests
-
-on: [push, pull_request]
-
+name: Test
+on:
+  push:
+    branches:
+      - "**"
+    tags-ignore:
+      - "**"
+  # pull_request:
 jobs:
   test:
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
-    env:
-      GOPROXY: direct
+        os: [ubuntu, windows, macOS]
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Install Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.20.x
+      - name: Checkout Source
+        uses: actions/checkout@v4
 
       - name: Go Cache
         uses: actions/cache@v3
@@ -27,8 +25,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Go Vet
-        run: go vet ./...
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.20.x
+          cache: false
 
       - name: Tests
-        run: go test ./... -v -race
+        run: go test -v -race -covermode atomic -coverprofile=covprofile ./...
