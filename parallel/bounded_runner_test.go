@@ -139,10 +139,10 @@ func TestFailFastOnTaskError(t *testing.T) {
 	wg.Wait()
 	checkResult(expectedTotal, results, t)
 
-	//TODO: Fix this test
-	//This test is fragile since 1 or more goroutines may be executing and failing fast in parallel,
-	//calling the error handler and increasing the result. So we cannot use accurate comparison.
-	//Here we only take care of uo to 1 additional concurrent failfast.
+	// TODO: Fix this test
+	// This test is fragile since 1 or more goroutines may be executing and failing fast in parallel,
+	// calling the error handler and increasing the result. So we cannot use accurate comparison.
+	// Here we only take care of uo to 1 additional concurrent failfast.
 	errTotal := 0
 	for {
 		err := errorsQueue.GetError()
