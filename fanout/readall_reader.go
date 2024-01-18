@@ -45,7 +45,7 @@ func NewReadAllReader(reader io.Reader, consumers ...ReadAllConsumer) *ReadAllRe
 	pipeWriters := make([]*io.PipeWriter, procLen)
 	done := make(chan *readerResult, procLen)
 	errs := make(chan error, procLen)
-	//Create pipe r/w for each reader
+	// Create pipe r/w for each reader
 	for i := 0; i < procLen; i++ {
 		pr, pw := io.Pipe()
 		pipeReaders[i] = pr

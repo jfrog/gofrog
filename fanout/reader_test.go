@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"github.com/stretchr/testify/assert"
 	"io"
 	"strings"
 	"testing"
@@ -28,7 +29,7 @@ func TestFanoutRead(t *testing.T) {
 		return hash.Sum(nil), nil
 	}
 
-	//Using a closure argument instead of results
+	// Using a closure argument instead of results
 	var sum3 []byte
 	proc1 := func(r io.Reader) (rt interface{}, er error) {
 		hash := sha256.New()
@@ -47,7 +48,10 @@ func TestFanoutRead(t *testing.T) {
 		t.Error(err)
 	}
 	sum1 := results[0].([]byte)
-	sum2 := results[1].([]byte)
+	sum1, ok := results[0].([]byte)
+	assert.True(t, ok)
+	sum2, ok := results[1].([]byte)
+	assert.True(t, ok)
 
 	sum1str := hex.EncodeToString(sum1)
 	sum2str := hex.EncodeToString(sum2)
@@ -156,5 +160,6 @@ func TestSyncReadOnError(t *testing.T) {
 	}
 
 	pfr := NewReadAllReader(strings.NewReader("someNotTooShortString"), ReadAllConsumerFunc(proc1), ReadAllConsumerFunc(proc2))
-	pfr.ReadAll()
+	_, err := pfr.ReadAll()
+	assert.NoError(t, err)
 }

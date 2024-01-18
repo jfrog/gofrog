@@ -16,7 +16,7 @@ func init() {
 		panic("Failed to generate signingKey")
 	}
 	h := sha256.New()
-	sha256 := fmt.Sprintf("%x", (h.Sum(nil)))
+	sha256 := fmt.Sprintf("%x", h.Sum(nil))
 	keyId = sha256[:6]
 }
 
@@ -42,8 +42,8 @@ func TestDecryptUnformattedCipherText(t *testing.T) {
 		t.Fatal(err)
 	}
 	formatEncryption := keyId + "$" + "aes256" + "$"
-	//keep cipher text only
-	cipherText := strings.Replace(FormattedCipherText, formatEncryption, "", -1)
+	// Keep cipher text only
+	cipherText := strings.ReplaceAll(FormattedCipherText, formatEncryption, "")
 	_, err = Decrypt(cipherText, signingKey, keyId)
 	if err == nil || (err != nil && err.Error() != "cipher text is not well formatted") {
 		t.Fatal("Expect error Cipher text is not well formatted")
@@ -53,7 +53,7 @@ func TestDecryptUnformattedCipherText(t *testing.T) {
 func TestIsTextEncrypted(t *testing.T) {
 	var text = "Text to encrypt with very long text"
 	formatEncryption := keyId + "$" + "aes256" + "$" + text
-	//keep cipher text only
+	// Keep cipher text only
 	isEncrypted, err := IsTextEncrypted(formatEncryption, signingKey, keyId)
 	if isEncrypted {
 		t.Fatal(err)

@@ -38,8 +38,10 @@ func (c *cacheBase) Add(key string, value interface{}) {
 	}
 	if ee, ok := c.cache[key]; ok {
 		c.ll.MoveToFront(ee)
-		ee.Value.(*entry).value = value
-		ee.Value.(*entry).timeInsert = epochNow
+		if ent, entOk := ee.Value.(*entry); entOk {
+			ent.value = value
+			ent.timeInsert = epochNow
+		}
 		return
 	}
 	ele := c.ll.PushFront(&entry{key, value, epochNow})

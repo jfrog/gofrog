@@ -28,7 +28,7 @@ func NewReader(reader io.Reader, consumers ...Consumer) *Reader {
 	procLen := len(consumers)
 	pipeReaders := make([]*io.PipeReader, procLen)
 	pipeWriters := make([]*io.PipeWriter, procLen)
-	//Create pipe r/w for each reader
+	// Create pipe r/w for each reader
 	for i := 0; i < procLen; i++ {
 		pr, pw := io.Pipe()
 		pipeReaders[i] = pr
@@ -52,10 +52,10 @@ func (r *Reader) Read(p []byte) (int, error) {
 	go func() {
 		defer wg.Done()
 		defer r.close()
-		//Read from reader and fan out to the writers
+		// Read from reader and fan out to the writers
 		n, err := r.reader.Read(p)
 		if err != nil {
-			//Do not wrap the read err or EOF will not be handled
+			// Do not wrap the read err or EOF will not be handled
 			e = err
 		} else {
 			_, err = r.multiWriter.Write(p[:n])

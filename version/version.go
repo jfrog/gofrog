@@ -25,11 +25,12 @@ func (v *Version) SetVersion(version string) {
 // If ver1 > version returns 1
 // If ver1 < version returns -1
 func (v *Version) Compare(ver1 string) int {
-	if ver1 == v.version {
+	switch {
+	case ver1 == v.version:
 		return 0
-	} else if ver1 == "development" {
+	case ver1 == "development":
 		return 1
-	} else if v.version == "development" {
+	case v.version == "development":
 		return -1
 	}
 
