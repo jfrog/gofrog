@@ -15,9 +15,10 @@ var errTest = errors.New("some error")
 
 func TestIsStarted(t *testing.T) {
 	runner := NewBounedRunner(1, false)
-	runner.AddTask(func(i int) error {
+	_, err := runner.AddTask(func(i int) error {
 		return nil
 	})
+	assert.NoError(t, err)
 	runner.Done()
 	runner.Run()
 	assert.True(t, runner.IsStarted())
@@ -41,7 +42,7 @@ func TestAddTask(t *testing.T) {
 			results <- x
 			time.Sleep(time.Millisecond * time.Duration(rand.Intn(50)))
 			if float64(x) > float64(count)/2 {
-				return fmt.Errorf("Second half value %d not counted", x)
+				return fmt.Errorf("second half value %d not counted", x)
 			}
 			return nil
 		})

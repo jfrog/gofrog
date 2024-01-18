@@ -31,6 +31,6 @@ func GenerateKeyId(key string) (string, error) {
 	}
 	h := sha256.New()
 	h.Write([]byte(key))
-	sha256 := fmt.Sprintf("%x", (h.Sum(nil)))
+	sha256 := fmt.Sprintf("%x", h.Sum(nil))
 	return sha256[:6], nil
 }

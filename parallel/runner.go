@@ -80,7 +80,7 @@ type runner struct {
 
 // Create a new capacity runner - a runner we can add tasks to without blocking as long as the capacity is not reached.
 // maxParallel - number of go routines for task processing, maxParallel always will be a positive number.
-// acceptBeforeBlocking - number of tasks that can be added until a free processing goruntine is needed.
+// acceptBeforeBlocking - number of tasks that can be added until a free processing goroutine is needed.
 // failFast - is set to true the will stop on first error.
 func NewRunner(maxParallel int, capacity uint, failFast bool) *runner {
 	consumers := maxParallel

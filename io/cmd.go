@@ -62,7 +62,8 @@ func RunCmd(config CmdConfig) error {
 	// If the command fails to run or doesn't complete successfully ExitError is returned.
 	// We would like to return a regular error instead of ExitError,
 	// because some frameworks (such as codegangsta used by JFrog CLI) automatically exit when this error is returned.
-	if _, ok := err.(*exec.ExitError); ok {
+	var exitError *exec.ExitError
+	if errors.As(err, &exitError) {
 		err = errors.New(err.Error())
 	}
 
@@ -135,14 +136,15 @@ func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdO
 		return
 	}
 	exitOk = true
-	if _, ok := err.(*exec.ExitError); ok {
+	var exitError *exec.ExitError
+	if errors.As(err, &exitError) {
 		// The program has exited with an exit code != 0
 		exitOk = false
 	}
 	return
 }
 
-// Run all of the input regExpStruct array on the input stdout or stderr line.
+// Run all the input regExpStruct array on the input stdout or stderr line.
 // If an error occurred, add it to the error channel.
 // regExpStruct - Array of command output patterns to process the line
 // line - string line from stdout or stderr
@@ -195,7 +197,7 @@ type CmdConfig interface {
 }
 
 // RegExp - The regexp that the line will be searched upon.
-// MatchedResults - The slice result that was found by the regex
+// MatchedResults - The slice result that was found by the regexp
 // Line - The output line from the external process
 // ExecFunc - The function to execute
 type CmdOutputPattern struct {

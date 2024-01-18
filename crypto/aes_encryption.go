@@ -75,8 +75,8 @@ func Decrypt(formattedCipherText, key, keyId string) (string, error) {
 	if !strings.Contains(formattedCipherText, formatEncryption) {
 		return "", errors.New("cipher text is not well formatted")
 	}
-	//keep cipher text only
-	cipherText := strings.Replace(formattedCipherText, formatEncryption, "", -1)
+	// keep cipher text only
+	cipherText := strings.ReplaceAll(formattedCipherText, formatEncryption, "")
 	// hex decoding of key and text
 	KeyByte, err := hex.DecodeString(key)
 	if err != nil {
@@ -99,7 +99,7 @@ func IsTextEncrypted(formattedCipherText, key, keyId string) (bool, error) {
 		return false, errors.New("cipher text is not well formatted")
 	}
 	// Keep cipher text only
-	cipherText := strings.Replace(formattedCipherText, formatEncryption, "", -1)
+	cipherText := strings.ReplaceAll(formattedCipherText, formatEncryption, "")
 	// hex decoding of key and text
 	keyByte, err := hex.DecodeString(key)
 	if err != nil {

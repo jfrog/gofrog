@@ -38,8 +38,10 @@ func (c *cacheBase) Add(key string, value interface{}) {
 	}
 	if ee, ok := c.cache[key]; ok {
 		c.ll.MoveToFront(ee)
-		ee.Value.(*entry).value = value
-		ee.Value.(*entry).timeInsert = epochNow
+		if ent, entOk := ee.Value.(*entry); entOk {
+			ent.value = value
+			ent.timeInsert = epochNow
+		}
 		return
 	}
 	ele := c.ll.PushFront(&entry{key, value, epochNow})
@@ -65,7 +67,7 @@ func (c *cacheBase) Get(key string) (value interface{}, ok bool) {
 	return nil, false
 }
 
-// Updates element's value without updating it's "Least-Recently-Used" status
+// Updates element's value without updating its "Least-Recently-Used" status
 func (c *cacheBase) UpdateElement(key string, value interface{}) {
 	if ee, ok := c.cache[key]; ok {
 		ee.Value.(*entry).value = value

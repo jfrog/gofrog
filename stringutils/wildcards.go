@@ -19,7 +19,7 @@ func MatchWildcardPattern(pattern string, str string) (matched bool, err error) 
 func WildcardPatternToRegExp(localPath string) string {
 	localPath = EscapeSpecialChars(localPath)
 	var wildcard = ".*"
-	localPath = strings.Replace(localPath, "*", wildcard, -1)
+	localPath = strings.ReplaceAll(localPath, "*", wildcard)
 	if strings.HasSuffix(localPath, "/") || strings.HasSuffix(localPath, "\\") {
 		localPath += wildcard
 	}
@@ -30,7 +30,7 @@ func EscapeSpecialChars(path string) string {
 	// We don't replace other special characters (like parenthesis) because they're used in the placeholders logic of the JFrog CLI.
 	var specialChars = []string{".", "^", "$", "+", "[", "]"}
 	for _, char := range specialChars {
-		path = strings.Replace(path, char, "\\"+char, -1)
+		path = strings.ReplaceAll(path, char, "\\"+char)
 	}
 	return path
 }

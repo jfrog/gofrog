@@ -21,7 +21,7 @@ const buflen = 4096
 
 var src = rand.NewSource(time.Now().UnixNano())
 
-// #nosec G404 - No cryptographic level encription is needed in random file
+// #nosec G404 - No cryptographic level encryption is needed in random file
 var rnd = rand.New(src)
 
 func CreateRandomLenFile(maxLen int, filesDir string, prefix string) string {
@@ -33,7 +33,7 @@ func CreateRandomLenFile(maxLen int, filesDir string, prefix string) string {
 		panic(err)
 	}
 	defer created.Close()
-	//Check that the files were created with expected len
+	// Check that the files were created with expected len
 	if created.Info.Size() != int64(len) {
 		panic(fmt.Errorf("unexpected file length. Expected: %d, Got %d", created.Info.Size(), len))
 	}

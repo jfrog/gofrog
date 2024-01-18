@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"github.com/stretchr/testify/assert"
 	"io"
 	"strings"
 	"testing"
@@ -28,7 +29,7 @@ func TestFanoutRead(t *testing.T) {
 		return hash.Sum(nil), nil
 	}
 
-	//Using a closure argument instead of results
+	// Using a closure argument instead of results
 	var sum3 []byte
 	proc1 := func(r io.Reader) (rt interface{}, er error) {
 		hash := sha256.New()
@@ -46,15 +47,17 @@ func TestFanoutRead(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	sum1 := results[0].([]byte)
-	sum2 := results[1].([]byte)
+	sum1, ok := results[0].([]byte)
+	assert.True(t, ok)
+	sum2, ok := results[1].([]byte)
+	assert.True(t, ok)
 
 	sum1str := hex.EncodeToString(sum1)
 	sum2str := hex.EncodeToString(sum2)
 	sum3str := hex.EncodeToString(sum3)
 
-	if !(sum1str == sum2str && sum1str == sum3str) {
-		t.Errorf("Sum1 %s and sum2 %s and sum3 %s are not the same", sum1str, sum2str, sum3str)
+	if sum1str != sum2str || sum1str != sum3str {
+		t.Errorf("Sum1 %s, Sum2 %s, and Sum3 %s are not all the same", sum1str, sum2str, sum3str)
 	}
 
 	if sum1str != sha2sum {
@@ -156,5 +159,5 @@ func TestSyncReadOnError(t *testing.T) {
 	}
 
 	pfr := NewReadAllReader(strings.NewReader("someNotTooShortString"), ReadAllConsumerFunc(proc1), ReadAllConsumerFunc(proc2))
-	pfr.ReadAll()
+	_, _ = pfr.ReadAll()
 }

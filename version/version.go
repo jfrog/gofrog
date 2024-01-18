@@ -25,11 +25,12 @@ func (v *Version) SetVersion(version string) {
 // If ver1 > version returns 1
 // If ver1 < version returns -1
 func (v *Version) Compare(ver1 string) int {
-	if ver1 == v.version {
+	switch {
+	case ver1 == v.version:
 		return 0
-	} else if ver1 == "development" {
+	case ver1 == "development":
 		return 1
-	} else if v.version == "development" {
+	case v.version == "development":
 		return -1
 	}
 
@@ -69,7 +70,7 @@ func compareTokens(ver1Token, ver2Token string) int {
 		return 0
 	}
 
-	// Ignoring error because we strip all the non numeric values in advance.
+	// Ignoring error because we strip all the non-numeric values in advance.
 	ver1Number, ver1Suffix := splitNumberAndSuffix(ver1Token)
 	ver1TokenInt, _ := strconv.Atoi(ver1Number)
 	ver2Number, ver2Suffix := splitNumberAndSuffix(ver2Token)
