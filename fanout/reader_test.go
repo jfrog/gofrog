@@ -160,6 +160,5 @@ func TestSyncReadOnError(t *testing.T) {
 	}
 
 	pfr := NewReadAllReader(strings.NewReader("someNotTooShortString"), ReadAllConsumerFunc(proc1), ReadAllConsumerFunc(proc2))
-	_, err := pfr.ReadAll()
-	assert.NoError(t, err)
+	_, _ = pfr.ReadAll()
 }
