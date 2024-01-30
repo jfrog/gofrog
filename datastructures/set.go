@@ -77,7 +77,11 @@ func (setA *Set[T]) Intersect(setB *Set[T]) *Set[T] {
 
 func (setA *Set[T]) Union(setB *Set[T]) *Set[T] {
 	unionedSet := MakeSet[T]()
-	unionedSet.AddElements(setA.ToSlice()...)
-	unionedSet.AddElements(setB.ToSlice()...)
+	for key := range setA.container {
+		unionedSet.Add(key)
+	}
+	for key := range setB.container {
+		unionedSet.Add(key)
+	}
 	return unionedSet
 }
