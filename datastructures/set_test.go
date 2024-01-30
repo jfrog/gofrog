@@ -45,3 +45,25 @@ func TestMakeSetFromElements(t *testing.T) {
 	stringSet := MakeSetFromElements(stringSlice...)
 	assert.ElementsMatch(t, stringSet.ToSlice(), stringSlice)
 }
+
+func TestSetsIntersection(t *testing.T) {
+	testSet := generateNewSetWithData()
+	anotherSet := MakeSet[int]()
+	intersectedSet := testSet.Intersect(anotherSet)
+	assert.Equal(t, 0, intersectedSet.Size())
+
+	anotherSet.Add(3)
+	intersectedSet = testSet.Intersect(anotherSet)
+	assert.Equal(t, 1, intersectedSet.Size())
+}
+
+func TestSetsUnion(t *testing.T) {
+	testSet := generateNewSetWithData()
+	anotherSet := MakeSet[int]()
+	unionedSet := testSet.Union(anotherSet)
+	assert.Equal(t, 3, unionedSet.Size())
+
+	anotherSet.Add(4)
+	unionedSet = testSet.Union(anotherSet)
+	assert.Equal(t, 4, unionedSet.Size())
+}
