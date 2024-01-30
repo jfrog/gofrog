@@ -60,11 +60,9 @@ func (set *Set[T]) ToSlice() []T {
 
 func (setA *Set[T]) Intersect(setB *Set[T]) *Set[T] {
 	intersectedSet := MakeSet[T]()
-	bigSet := setB
-	smallSet := setA
+	bigSet, smallSet := setB, setA
 	if setA.Size() > setB.Size() {
-		bigSet = setA
-		smallSet = setB
+		bigSet, smallSet = setA, setB
 	}
 
 	for key := range smallSet.container {
