@@ -59,11 +59,11 @@ func TestSetsIntersection(t *testing.T) {
 
 func TestSetsUnion(t *testing.T) {
 	testSet := generateNewSetWithData()
-    anotherSet := MakeSet[int]()
-    unionedSet := testSet.Union(anotherSet)
-    assert.Equal(t, 3, unionedSet.Size())
+	anotherSet := MakeSet[int]()
+	unionedSet := testSet.Union(anotherSet)
+	assert.Equal(t, 3, unionedSet.Size())
 
-    anotherSet.Add(4)
-    unionedSet = testSet.Union(anotherSet)
-    assert.Equal(t, 4, unionedSet.Size())
+	anotherSet.Add(4)
+	unionedSet = testSet.Union(anotherSet)
+	assert.Equal(t, 4, unionedSet.Size())
 }
