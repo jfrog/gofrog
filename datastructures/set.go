@@ -58,28 +58,34 @@ func (set *Set[T]) ToSlice() []T {
 	return slice
 }
 
-func (setA *Set[T]) Intersect(setB *Set[T]) *Set[T] {
-	intersectedSet := MakeSet[T]()
-	bigSet, smallSet := setB, setA
-	if setA.Size() > setB.Size() {
-		bigSet, smallSet = setA, setB
+func (set *Set[T]) Intersect(setB *Set[T]) *Set[T] {
+	intersectSet := MakeSet[T]()
+	if setB == nil {
+		return intersectSet
+	}
+	bigSet, smallSet := setB, set
+	if set.Size() > setB.Size() {
+		bigSet, smallSet = set, setB
 	}
 
 	for key := range smallSet.container {
 		if bigSet.Exists(key) {
-			intersectedSet.Add(key)
+			intersectSet.Add(key)
 		}
 	}
-	return intersectedSet
+	return intersectSet
 }
 
-func (setA *Set[T]) Union(setB *Set[T]) *Set[T] {
-	unionedSet := MakeSet[T]()
-	for key := range setA.container {
-		unionedSet.Add(key)
+func (set *Set[T]) Union(setB *Set[T]) *Set[T] {
+	if setB == nil {
+		return set
+	}
+	unionSet := MakeSet[T]()
+	for key := range set.container {
+		unionSet.Add(key)
 	}
 	for key := range setB.container {
-		unionedSet.Add(key)
+		unionSet.Add(key)
 	}
-	return unionedSet
+	return unionSet
 }
