@@ -5,6 +5,7 @@ import (
 	cr "crypto/rand"
 	"errors"
 	"fmt"
+	"io"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -235,4 +236,11 @@ func GetFileInfo(path string, followSymlink bool) (fileInfo os.FileInfo, err err
 	}
 	// We should not do CheckError here, because the error is checked by the calling functions.
 	return fileInfo, err
+}
+
+// Close the reader/writer and append the error to the given error.
+func Close(closer io.Closer, err *error) {
+	if closeErr := closer.Close(); closeErr != nil {
+		*err = errors.Join(*err, fmt.Errorf("failed to close %T: %w", closer, closeErr))
+	}
 }
