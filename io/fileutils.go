@@ -246,8 +246,7 @@ func Close(closer io.Closer, err *error) {
 	}
 
 	closeErr = fmt.Errorf("failed to close %T: %w", closer, closeErr)
-	if err == nil {
-		return
+	if err != nil {
+		*err = errors.Join(*err, closeErr)
 	}
-	*err = errors.Join(*err, closeErr)
 }
