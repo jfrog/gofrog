@@ -31,7 +31,3 @@ func TestClose(t *testing.T) {
 	Close(f, nilErr)
 	assert.NotNil(t, nilErr)
 }
-
-func getNilErr() error {
-	return nil
-}
