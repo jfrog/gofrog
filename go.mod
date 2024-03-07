@@ -3,6 +3,7 @@ module github.com/jfrog/gofrog
 go 1.20
 
 require (
+	github.com/cespare/xxhash v1.1.0
 	github.com/jfrog/archiver/v3 v3.6.0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.4
