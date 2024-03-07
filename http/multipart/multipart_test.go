@@ -21,8 +21,8 @@ func TestReadFilesFromStream(t *testing.T) {
 	file2 := path.Join(sourceDir, "test2.txt")
 	file1Content := []byte("test content1")
 	file2Content := []byte("test content2")
-	assert.NoError(t, os.WriteFile(file1, file1Content, 0644))
-	assert.NoError(t, os.WriteFile(file2, file2Content, 0644))
+	assert.NoError(t, os.WriteFile(file1, file1Content, 0600))
+	assert.NoError(t, os.WriteFile(file2, file2Content, 0600))
 
 	// Create the multipart writer that will stream our files
 	body := &bytes.Buffer{}
