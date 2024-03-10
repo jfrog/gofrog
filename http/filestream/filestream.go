@@ -45,7 +45,7 @@ func WriteFilesToStream(responseWriter http.ResponseWriter, filePaths []string) 
 	responseWriter.Header().Set(contentType, multipartWriter.FormDataContentType())
 
 	for _, filePath := range filePaths {
-		if err = writeSingleFile(multipartWriter, filePath); err != nil {
+		if err = writeFile(multipartWriter, filePath); err != nil {
 			return
 		}
 	}
@@ -55,7 +55,7 @@ func WriteFilesToStream(responseWriter http.ResponseWriter, filePaths []string) 
 	return multipartWriter.Close()
 }
 
-func writeSingleFile(multipartWriter *multipart.Writer, filePath string) (err error) {
+func writeFile(multipartWriter *multipart.Writer, filePath string) (err error) {
 	fileReader, err := os.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
