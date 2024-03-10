@@ -46,6 +46,7 @@ func TestWriteFilesToStreamAndReadFilesFromStream(t *testing.T) {
 	content, err := os.ReadFile(file1)
 	assert.NoError(t, err)
 	assert.Equal(t, file1Content, content)
+	assert.NoError(t, os.Remove(file1))
 
 	// Validate file 2 transferred successfully
 	file2 = filepath.Join(targetDir, "test2.txt")
@@ -53,6 +54,7 @@ func TestWriteFilesToStreamAndReadFilesFromStream(t *testing.T) {
 	content, err = os.ReadFile(file2)
 	assert.NoError(t, err)
 	assert.Equal(t, file2Content, content)
+	assert.NoError(t, os.Remove(file2))
 }
 
 func simpleFileHandler(fileName string) (fileWriter io.Writer, err error) {
