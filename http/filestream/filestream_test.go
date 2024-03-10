@@ -17,9 +17,8 @@ import (
 
 var targetDir string
 
-func TestReadFilesFromStream(t *testing.T) {
+func TestWriteFilesToStreamAndReadFilesFromStream(t *testing.T) {
 	sourceDir := t.TempDir()
-
 	// Create 2 file to be transferred via our multipart stream
 	file1 := filepath.Join(sourceDir, "test1.txt")
 	file2 := filepath.Join(sourceDir, "test2.txt")
@@ -42,19 +41,22 @@ func TestReadFilesFromStream(t *testing.T) {
 	assert.NoError(t, ReadFilesFromStream(multipartReader, fileHandlerWithHashValidation))
 
 	// Validate file 1 transferred successfully
-	content, err := os.ReadFile(filepath.Join(targetDir, "test1.txt"))
+	file1 = filepath.Join(targetDir, "test1.txt")
+	assert.FileExists(t, file1)
+	content, err := os.ReadFile(file1)
 	assert.NoError(t, err)
 	assert.Equal(t, file1Content, content)
 
 	// Validate file 2 transferred successfully
-	content, err = os.ReadFile(filepath.Join(targetDir, "test2.txt"))
+	file2 = filepath.Join(targetDir, "test2.txt")
+	assert.FileExists(t, file2)
+	content, err = os.ReadFile(file2)
 	assert.NoError(t, err)
 	assert.Equal(t, file2Content, content)
-
 }
 
 func simpleFileHandler(fileName string) (fileWriter io.Writer, err error) {
-	return os.Create(filepath.Join(targetDir, fileName))
+	return os.OpenFile(filepath.Join(targetDir, fileName), os.O_RDWR|os.O_CREATE, 0777)
 }
 
 func fileHandlerWithHashValidation(fileName string) (fileWriter io.Writer, err error) {
