@@ -66,8 +66,8 @@ func fileHandlerWithHashValidation(fileName string) (fileWriter io.Writer, err e
 	}
 	// GetExpectedHashFromLockFile(fileName)
 	lockFileMock := map[string]string{
-		"test1": "070afab2066d3b16",
-		"test2": "070afab2066d3b16",
+		"test1.txt": "070afab2066d3b16",
+		"test2.txt": "48bc7295420af89d",
 	}
 	return io.MultiWriter(
 		fileWriter,
