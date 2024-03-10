@@ -58,6 +58,7 @@ func TestWriteFilesToStreamAndReadFilesFromStream(t *testing.T) {
 }
 
 func simpleFileHandler(fileName string) (fileWriter io.Writer, err error) {
+	// #nosec G302
 	return os.OpenFile(filepath.Join(targetDir, fileName), os.O_RDWR|os.O_CREATE, 0777)
 }
 
