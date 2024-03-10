@@ -6,6 +6,7 @@ require (
 	github.com/jfrog/archiver/v3 v3.6.0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.4
+	github.com/zeebo/xxh3 v1.0.2
 )
 
 require (
@@ -14,6 +15,7 @@ require (
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/klauspost/compress v1.17.4 // indirect
+	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
 	github.com/nwaples/rardecode v1.1.3 // indirect
 	github.com/pierrec/lz4/v4 v4.1.21 // indirect

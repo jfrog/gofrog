@@ -6,12 +6,19 @@ import (
 	ioutils "github.com/jfrog/gofrog/io"
 	"io"
 	"mime/multipart"
+	"net/http"
 	"os"
 )
 
-type FileWriterFunc func(fileName string) (io.WriteCloser, error)
+const (
+	contentType = "Content-Type"
+	FileType    = "file"
+)
 
-func ReadFilesFromStream(multipartReader *multipart.Reader, fileWriterFunc FileWriterFunc) error {
+// The expected type of function that should be provided to the ReadFilesFromStream func, that returns the writer that should handle each file
+type FileHandlerFunc func(fileName string) (writer io.Writer, err error)
+
+func ReadFilesFromStream(multipartReader *multipart.Reader, fileHandlerFunc FileHandlerFunc) error {
 	for {
 		// Read the next file streamed from client
 		fileReader, err := multipartReader.NextPart()
@@ -22,36 +29,42 @@ func ReadFilesFromStream(multipartReader *multipart.Reader, fileWriterFunc FileW
 			return fmt.Errorf("failed to read file: %w", err)
 		}
 		fileName := fileReader.FileName()
-		fileWriter, err := fileWriterFunc(fileName)
+		fileWriter, err := fileHandlerFunc(fileName)
 		if err != nil {
 			return err
 		}
-
 		if _, err = io.Copy(fileWriter, fileReader); err != nil {
-			return fmt.Errorf("failed writing '%s' file: %w", fileName, err)
+			err = fmt.Errorf("failed writing '%s' file: %w", fileName, err)
 		}
-		ioutils.Close(fileWriter, &err)
 	}
 	return nil
 }
 
-func WriteFilesToStream(multipartWriter *multipart.Writer, filePaths []string) (err error) {
-	defer ioutils.Close(multipartWriter, &err)
+func WriteFilesToStream(responseWriter http.ResponseWriter, filePaths []string) (err error) {
+	multipartWriter := multipart.NewWriter(responseWriter)
+	responseWriter.Header().Set(contentType, multipartWriter.FormDataContentType())
 
 	for _, filePath := range filePaths {
-		fileReader, err := os.Open(filePath)
-		if err != nil {
-			return fmt.Errorf("failed to open file: %w", err)
-		}
-		defer ioutils.Close(fileReader, &err)
-		fileWriter, err := multipartWriter.CreateFormFile("file", filePath)
-		if err != nil {
-			return fmt.Errorf("failed to CreateFormFile: %w", err)
-		}
-		_, err = io.Copy(fileWriter, fileReader)
-		if err != nil {
-			return err
+		if err = writeSingleFile(multipartWriter, filePath); err != nil {
+			return
 		}
 	}
-	return nil
+
+	// Close finishes the multipart message and writes the trailing
+	// boundary end line to the output.
+	return multipartWriter.Close()
+}
+
+func writeSingleFile(multipartWriter *multipart.Writer, filePath string) (err error) {
+	fileReader, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open file: %w", err)
+	}
+	defer ioutils.Close(fileReader, &err)
+	fileWriter, err := multipartWriter.CreateFormFile(FileType, filePath)
+	if err != nil {
+		return fmt.Errorf("failed to CreateFormFile: %w", err)
+	}
+	_, err = io.Copy(fileWriter, fileReader)
+	return err
 }
