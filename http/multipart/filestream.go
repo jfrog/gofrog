@@ -1,4 +1,4 @@
-package multipart
+package filestream
 
 import (
 	"errors"

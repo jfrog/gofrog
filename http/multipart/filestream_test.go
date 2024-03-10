@@ -1,4 +1,4 @@
-package multipart
+package filestream
 
 import (
 	"bytes"
@@ -6,7 +6,6 @@ import (
 	"io"
 	"mime/multipart"
 	"os"
-	"path"
 	"path/filepath"
 	"testing"
 )
@@ -17,8 +16,8 @@ func TestReadFilesFromStream(t *testing.T) {
 	sourceDir := t.TempDir()
 
 	// Create 2 file to be transferred via our multipart stream
-	file1 := path.Join(sourceDir, "test1.txt")
-	file2 := path.Join(sourceDir, "test2.txt")
+	file1 := filepath.Join(sourceDir, "test1.txt")
+	file2 := filepath.Join(sourceDir, "test2.txt")
 	file1Content := []byte("test content1")
 	file2Content := []byte("test content2")
 	assert.NoError(t, os.WriteFile(file1, file1Content, 0600))
