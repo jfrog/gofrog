@@ -120,6 +120,19 @@ func TestUnarchiveWithStripComponents(t *testing.T) {
 	}
 }
 
+// Test unarchive file with a directory named "." in the root directory
+func TestUnarchiveDotDir(t *testing.T) {
+	uarchiver := Unarchiver{}
+
+	// Create temp directory
+	tmpDir, createTempDirCallback := createTempDirWithCallbackAndAssert(t)
+	defer createTempDirCallback()
+	// Run unarchive
+	err := runUnarchive(t, uarchiver, "dot-dir.tar.gz", "archives", tmpDir+string(os.PathSeparator))
+	assert.NoError(t, err)
+	assert.DirExists(t, filepath.Join(tmpDir, "dir"))
+}
+
 func runUnarchive(t *testing.T, uarchiver Unarchiver, archiveFileName, sourceDir, targetDir string) error {
 	archivePath := filepath.Join("testdata", sourceDir, archiveFileName)
 	assert.True(t, uarchiver.IsSupportedArchive(archivePath))

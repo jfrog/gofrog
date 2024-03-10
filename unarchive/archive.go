@@ -3,11 +3,12 @@ package unarchive
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/jfrog/archiver/v3"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/jfrog/archiver/v3"
 
 	"github.com/jfrog/gofrog/datastructures"
 )
@@ -135,6 +136,7 @@ func (u *Unarchiver) byExtension(filename string) (interface{}, error) {
 
 // Make sure the archive is free from Zip Slip and Zip symlinks attacks
 func inspectArchive(archive interface{}, localArchivePath, destinationDir string) error {
+	destinationDir = strings.TrimSuffix(destinationDir, string(os.PathSeparator))
 	walker, ok := archive.(archiver.Walker)
 	if !ok {
 		return fmt.Errorf("couldn't inspect archive: " + localArchivePath)
