@@ -34,7 +34,7 @@ func ReadFilesFromStream(multipartReader *multipart.Reader, fileHandlerFunc File
 			return err
 		}
 		if _, err = io.Copy(fileWriter, fileReader); err != nil {
-			err = fmt.Errorf("failed writing '%s' file: %w", fileName, err)
+			return fmt.Errorf("failed writing '%s' file: %w", fileName, err)
 		}
 	}
 	return nil
