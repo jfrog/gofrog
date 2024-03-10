@@ -39,7 +39,7 @@ func TestReadFilesFromStream(t *testing.T) {
 	boundary := strings.Split(responseWriter.Header().Get(contentType), "boundary=")[1]
 	// Create the multipart reader that will read the files from the stream
 	multipartReader := multipart.NewReader(responseWriter.Body, boundary)
-	assert.NoError(t, ReadFilesFromStream(multipartReader, simpleFileHandler))
+	assert.NoError(t, ReadFilesFromStream(multipartReader, fileHandlerWithHashValidation))
 
 	// Validate file 1 transferred successfully
 	content, err := os.ReadFile(filepath.Join(targetDir, "test1.txt"))
@@ -57,28 +57,31 @@ func simpleFileHandler(fileName string) (fileWriter io.Writer, err error) {
 	return os.Create(filepath.Join(targetDir, fileName))
 }
 
-func fileHandlerWithHash(fileName string) (fileWriter io.Writer, err error) {
+func fileHandlerWithHashValidation(fileName string) (fileWriter io.Writer, err error) {
 	fileWriter, err = simpleFileHandler(fileName)
 	if err != nil {
 		return
 	}
 	// GetExpectedHashFromLockFile(fileName)
-	expectedHash := "SDFDSFSDFSDFDSF"
-	return io.MultiWriter(fileWriter, NewHashWrapper(expectedHash)), nil
+	lockFileMock := map[string]string{
+		"file1": "070afab2066d3b16",
+		"file2": "070afab2066d3b16",
+	}
+	return io.MultiWriter(
+		fileWriter,
+		&HashValidator{hash: xxh3.New(), actualChecksum: lockFileMock[fileName]},
+	), nil
 }
 
-type HashWrapper struct {
+type HashValidator struct {
 	hash           hash.Hash64
 	actualChecksum string
 }
 
-func NewHashWrapper(actualChecksum string) *HashWrapper {
-	return &HashWrapper{hash: xxh3.New(), actualChecksum: actualChecksum}
-}
-
-func (hw *HashWrapper) Write(p []byte) (n int, err error) {
+func (hw *HashValidator) Write(p []byte) (n int, err error) {
 	n, err = hw.hash.Write(p)
-	if fmt.Sprintf("%x", hw.hash.Sum(nil)) != hw.actualChecksum {
+	sd := fmt.Sprintf("%x", hw.hash.Sum(nil))
+	if sd != hw.actualChecksum {
 		err = errors.New("checksum mismatch")
 	}
 	return
