@@ -15,8 +15,8 @@ var targetDir string
 func TestWriteFilesToStreamAndReadFilesFromStream(t *testing.T) {
 	sourceDir := t.TempDir()
 	// Create 2 file to be transferred via our multipart stream
-	file1 := FileInfo{Name: "test1.txt", Path: filepath.Join(sourceDir, "test1.txt")}
-	file2 := FileInfo{Name: "test2.txt", Path: filepath.Join(sourceDir, "test2.txt")}
+	file1 := &FileInfo{Name: "test1.txt", Path: filepath.Join(sourceDir, "test1.txt")}
+	file2 := &FileInfo{Name: "test2.txt", Path: filepath.Join(sourceDir, "test2.txt")}
 	file1Content := []byte("test content1")
 	file2Content := []byte("test content2")
 	assert.NoError(t, os.WriteFile(file1.Path, file1Content, 0600))
@@ -25,7 +25,7 @@ func TestWriteFilesToStreamAndReadFilesFromStream(t *testing.T) {
 	// Create the multipart writer that will stream our files
 	body := &bytes.Buffer{}
 	multipartWriter := multipart.NewWriter(body)
-	assert.NoError(t, WriteFilesToStream(multipartWriter, []FileInfo{file1, file2}))
+	assert.NoError(t, WriteFilesToStream(multipartWriter, []*FileInfo{file1, file2}))
 
 	// Create local temp dir that will store our files
 	targetDir = t.TempDir()
