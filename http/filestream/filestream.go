@@ -48,9 +48,6 @@ func readFile(fileReader *multipart.Part, fileWriterFunc FileWriterFunc) (err er
 	return err
 }
 
-// The expected type of function that should be provided to the WriteFilesToStream func, that returns the reader that should handle each file
-type FileReaderFunc func(fileName string) (writer io.ReadCloser, err error)
-
 type FileInfo struct {
 	Name string
 	Path string
