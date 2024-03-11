@@ -28,20 +28,26 @@ func ReadFilesFromStream(multipartReader *multipart.Reader, fileHandlerFunc File
 			}
 			return fmt.Errorf("failed to read file: %w", err)
 		}
-		fileName := fileReader.FileName()
-		fileWriter, err := fileHandlerFunc(fileName)
+		err = readFile(fileReader, fileHandlerFunc)
 		if err != nil {
 			return err
 		}
-		if _, err = io.Copy(fileWriter, fileReader); err != nil {
-			return fmt.Errorf("failed writing '%s' file: %w", fileName, err)
-		}
-		err = fileWriter.Close()
-		if err != nil {
-			return err
-		}
+
 	}
 	return nil
+}
+
+func readFile(fileReader *multipart.Part, fileHandlerFunc FileHandlerFunc) (err error) {
+	fileName := fileReader.FileName()
+	fileWriter, err := fileHandlerFunc(fileName)
+	if err != nil {
+		return err
+	}
+	defer ioutils.Close(fileWriter, &err)
+	if _, err = io.Copy(fileWriter, fileReader); err != nil {
+		return fmt.Errorf("failed writing '%s' file: %w", fileName, err)
+	}
+	return err
 }
 
 func WriteFilesToStream(responseWriter http.ResponseWriter, filePaths []string) (err error) {
