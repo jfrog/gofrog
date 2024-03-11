@@ -25,14 +25,14 @@ func TestWriteFilesToStreamAndReadFilesFromStream(t *testing.T) {
 	// Create the multipart writer that will stream our files
 	body := &bytes.Buffer{}
 	multipartWriter := multipart.NewWriter(body)
-	assert.NoError(t, WriteFilesToStream(multipartWriter, []string{file1, file2}))
+	assert.NoError(t, WriteFilesToStream(multipartWriter, []string{file1, file2}, simpleFileReader))
 
 	// Create local temp dir that will store our files
 	targetDir = t.TempDir()
 
 	// Create the multipart reader that will read the files from the stream
 	multipartReader := multipart.NewReader(body, multipartWriter.Boundary())
-	assert.NoError(t, ReadFilesFromStream(multipartReader, simpleFileHandler))
+	assert.NoError(t, ReadFilesFromStream(multipartReader, simpleFileWriter))
 
 	// Validate file 1 transferred successfully
 	file1 = filepath.Join(targetDir, "test1.txt")
@@ -51,6 +51,10 @@ func TestWriteFilesToStreamAndReadFilesFromStream(t *testing.T) {
 	assert.NoError(t, os.Remove(file2))
 }
 
-func simpleFileHandler(fileName string) (fileWriter io.WriteCloser, err error) {
+func simpleFileReader(fileName string) (fileWriter io.ReadCloser, err error) {
+	return os.Open(filepath.Join(targetDir, fileName))
+}
+
+func simpleFileWriter(fileName string) (fileWriter io.WriteCloser, err error) {
 	return os.Create(filepath.Join(targetDir, fileName))
 }
