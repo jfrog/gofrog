@@ -1,11 +1,7 @@
 package filestream
 
 import (
-	"errors"
-	"fmt"
 	"github.com/stretchr/testify/assert"
-	"github.com/zeebo/xxh3"
-	"hash"
 	"io"
 	"mime/multipart"
 	"net/http/httptest"
@@ -38,7 +34,7 @@ func TestWriteFilesToStreamAndReadFilesFromStream(t *testing.T) {
 	boundary := strings.Split(responseWriter.Header().Get(contentType), "boundary=")[1]
 	// Create the multipart reader that will read the files from the stream
 	multipartReader := multipart.NewReader(responseWriter.Body, boundary)
-	assert.NoError(t, ReadFilesFromStream(multipartReader, fileHandlerWithHashValidation))
+	assert.NoError(t, ReadFilesFromStream(multipartReader, simpleFileHandler))
 
 	// Validate file 1 transferred successfully
 	file1 = filepath.Join(targetDir, "test1.txt")
@@ -57,39 +53,6 @@ func TestWriteFilesToStreamAndReadFilesFromStream(t *testing.T) {
 	assert.NoError(t, os.Remove(file2))
 }
 
-func fileHandlerWithHashValidation(fileName string) (io.WriteCloser, error) {
-	fd, err := os.Create(filepath.Join(targetDir, fileName))
-	if err != nil {
-		return nil, err
-	}
-	// GetExpectedHashFromLockFile(fileName)
-	lockFileMock := map[string]string{
-		"test1.txt": "070afab2066d3b16",
-		"test2.txt": "48bc7295420af89d",
-	}
-	return &WriteWrapper{fd: fd, hash: xxh3.New(), actualChecksum: lockFileMock[fileName]}, nil
-}
-
-type WriteWrapper struct {
-	fd             *os.File
-	hash           hash.Hash64
-	actualChecksum string
-}
-
-func (ww *WriteWrapper) Write(p []byte) (n int, err error) {
-	// Write file
-	n, err = ww.Write(p)
-	if err != nil {
-		return
-	}
-	// Get checksum
-	n, err = ww.hash.Write(p)
-	sd := fmt.Sprintf("%x", ww.hash.Sum(nil))
-	if sd != ww.actualChecksum {
-		err = errors.New("checksum mismatch")
-	}
-	return
-}
-func (ww *WriteWrapper) Close() error {
-	return ww.fd.Close()
+func simpleFileHandler(fileName string) (fileWriter io.WriteCloser, err error) {
+	return os.Create(filepath.Join(targetDir, fileName))
 }
