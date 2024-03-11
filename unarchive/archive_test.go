@@ -14,8 +14,8 @@ func TestUnarchive(t *testing.T) {
 	for _, extension := range tests {
 		t.Run(extension, func(t *testing.T) {
 			// Create temp directory
-			tmpDir, createTempDirCallback := createTempDirWithCallbackAndAssert(t)
-			defer createTempDirCallback()
+			tmpDir := t.TempDir()
+
 			// Run unarchive on archive created on Unix
 			err := runUnarchive(t, uarchiver, "unix."+extension, "archives", filepath.Join(tmpDir, "unix"))
 			assert.NoError(t, err)
@@ -48,8 +48,7 @@ func TestUnarchiveSymlink(t *testing.T) {
 			for _, testCase := range unarchiveSymlinksCases {
 				t.Run(testCase.prefix, func(t *testing.T) {
 					// Create temp directory
-					tmpDir, createTempDirCallback := createTempDirWithCallbackAndAssert(t)
-					defer createTempDirCallback()
+					tmpDir := t.TempDir()
 
 					// Run unarchive
 					err := runUnarchive(t, uarchiver, testCase.prefix+"."+extension, "archives", tmpDir)
@@ -84,8 +83,8 @@ func TestUnarchiveZipSlip(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.testType, func(t *testing.T) {
 			// Create temp directory
-			tmpDir, createTempDirCallback := createTempDirWithCallbackAndAssert(t)
-			defer createTempDirCallback()
+			tmpDir := t.TempDir()
+
 			for _, archive := range test.archives {
 				// Unarchive and make sure an error returns
 				err := runUnarchive(t, uarchiver, test.testType+"."+archive, "zipslip", tmpDir)
@@ -103,8 +102,8 @@ func TestUnarchiveWithStripComponents(t *testing.T) {
 	for _, extension := range tests {
 		t.Run(extension, func(t *testing.T) {
 			// Create temp directory
-			tmpDir, createTempDirCallback := createTempDirWithCallbackAndAssert(t)
-			defer createTempDirCallback()
+			tmpDir := t.TempDir()
+
 			// Run unarchive on archive created on Unix
 			err := runUnarchive(t, uarchiver, "strip-components."+extension, "archives", filepath.Join(tmpDir, "unix"))
 			assert.NoError(t, err)
@@ -122,13 +121,11 @@ func TestUnarchiveWithStripComponents(t *testing.T) {
 
 // Test unarchive file with a directory named "." in the root directory
 func TestUnarchiveDotDir(t *testing.T) {
-	uarchiver := Unarchiver{}
-
 	// Create temp directory
-	tmpDir, createTempDirCallback := createTempDirWithCallbackAndAssert(t)
-	defer createTempDirCallback()
+	tmpDir := t.TempDir()
+
 	// Run unarchive
-	err := runUnarchive(t, uarchiver, "dot-dir.tar.gz", "archives", tmpDir+string(os.PathSeparator))
+	err := runUnarchive(t, Unarchiver{}, "dot-dir.tar.gz", "archives", tmpDir+string(os.PathSeparator))
 	assert.NoError(t, err)
 	assert.DirExists(t, filepath.Join(tmpDir, "dir"))
 }
@@ -137,12 +134,4 @@ func runUnarchive(t *testing.T, uarchiver Unarchiver, archiveFileName, sourceDir
 	archivePath := filepath.Join("testdata", sourceDir, archiveFileName)
 	assert.True(t, uarchiver.IsSupportedArchive(archivePath))
 	return uarchiver.Unarchive(filepath.Join("testdata", sourceDir, archiveFileName), archiveFileName, targetDir)
-}
-
-func createTempDirWithCallbackAndAssert(t *testing.T) (string, func()) {
-	tempDirPath, err := os.MkdirTemp("", "archiver_test")
-	assert.NoError(t, err, "Couldn't create temp dir")
-	return tempDirPath, func() {
-		assert.NoError(t, os.RemoveAll(tempDirPath), "Couldn't remove temp dir")
-	}
 }
