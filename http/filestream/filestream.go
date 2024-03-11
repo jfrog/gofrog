@@ -6,19 +6,17 @@ import (
 	ioutils "github.com/jfrog/gofrog/io"
 	"io"
 	"mime/multipart"
-	"net/http"
 	"os"
 )
 
 const (
-	contentType = "Content-Type"
-	FileType    = "file"
+	FileType = "file"
 )
 
 // The expected type of function that should be provided to the ReadFilesFromStream func, that returns the writer that should handle each file
-type FileHandlerFunc func(fileName string) (writer io.WriteCloser, err error)
+type FileWriterFunc func(fileName string) (writer io.WriteCloser, err error)
 
-func ReadFilesFromStream(multipartReader *multipart.Reader, fileHandlerFunc FileHandlerFunc) error {
+func ReadFilesFromStream(multipartReader *multipart.Reader, fileWriterFunc FileWriterFunc) error {
 	for {
 		// Read the next file streamed from client
 		fileReader, err := multipartReader.NextPart()
@@ -28,7 +26,7 @@ func ReadFilesFromStream(multipartReader *multipart.Reader, fileHandlerFunc File
 			}
 			return fmt.Errorf("failed to read file: %w", err)
 		}
-		err = readFile(fileReader, fileHandlerFunc)
+		err = readFile(fileReader, fileWriterFunc)
 		if err != nil {
 			return err
 		}
@@ -37,9 +35,9 @@ func ReadFilesFromStream(multipartReader *multipart.Reader, fileHandlerFunc File
 	return nil
 }
 
-func readFile(fileReader *multipart.Part, fileHandlerFunc FileHandlerFunc) (err error) {
+func readFile(fileReader *multipart.Part, fileWriterFunc FileWriterFunc) (err error) {
 	fileName := fileReader.FileName()
-	fileWriter, err := fileHandlerFunc(fileName)
+	fileWriter, err := fileWriterFunc(fileName)
 	if err != nil {
 		return err
 	}
@@ -50,12 +48,14 @@ func readFile(fileReader *multipart.Part, fileHandlerFunc FileHandlerFunc) (err 
 	return err
 }
 
-func WriteFilesToStream(responseWriter http.ResponseWriter, filePaths []string) (err error) {
-	multipartWriter := multipart.NewWriter(responseWriter)
-	responseWriter.Header().Set(contentType, multipartWriter.FormDataContentType())
+type FileInfo struct {
+	Name string
+	Path string
+}
 
-	for _, filePath := range filePaths {
-		if err = writeFile(multipartWriter, filePath); err != nil {
+func WriteFilesToStream(multipartWriter *multipart.Writer, filesList []FileInfo) (err error) {
+	for _, file := range filesList {
+		if err = writeFile(multipartWriter, file); err != nil {
 			return
 		}
 	}
@@ -65,13 +65,10 @@ func WriteFilesToStream(responseWriter http.ResponseWriter, filePaths []string) 
 	return multipartWriter.Close()
 }
 
-func writeFile(multipartWriter *multipart.Writer, filePath string) (err error) {
-	fileReader, err := os.Open(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to open file: %w", err)
-	}
+func writeFile(multipartWriter *multipart.Writer, file FileInfo) (err error) {
+	fileReader, err := os.Open(file.Path)
 	defer ioutils.Close(fileReader, &err)
-	fileWriter, err := multipartWriter.CreateFormFile(FileType, filePath)
+	fileWriter, err := multipartWriter.CreateFormFile(FileType, file.Name)
 	if err != nil {
 		return fmt.Errorf("failed to CreateFormFile: %w", err)
 	}

@@ -1,13 +1,12 @@
 package filestream
 
 import (
+	"bytes"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"mime/multipart"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -16,43 +15,36 @@ var targetDir string
 func TestWriteFilesToStreamAndReadFilesFromStream(t *testing.T) {
 	sourceDir := t.TempDir()
 	// Create 2 file to be transferred via our multipart stream
-	file1 := filepath.Join(sourceDir, "test1.txt")
-	file2 := filepath.Join(sourceDir, "test2.txt")
+	file1 := FileInfo{Name: "test1.txt", Path: filepath.Join(sourceDir, "test1.txt")}
+	file2 := FileInfo{Name: "test2.txt", Path: filepath.Join(sourceDir, "test2.txt")}
 	file1Content := []byte("test content1")
 	file2Content := []byte("test content2")
-	assert.NoError(t, os.WriteFile(file1, file1Content, 0600))
-	assert.NoError(t, os.WriteFile(file2, file2Content, 0600))
+	assert.NoError(t, os.WriteFile(file1.Path, file1Content, 0600))
+	assert.NoError(t, os.WriteFile(file2.Path, file2Content, 0600))
 
 	// Create the multipart writer that will stream our files
-	responseWriter := httptest.NewRecorder()
-	assert.NoError(t, WriteFilesToStream(responseWriter, []string{file1, file2}))
+	body := &bytes.Buffer{}
+	multipartWriter := multipart.NewWriter(body)
+	assert.NoError(t, WriteFilesToStream(multipartWriter, []FileInfo{file1, file2}))
 
 	// Create local temp dir that will store our files
 	targetDir = t.TempDir()
 
-	// Get boundary hash from writer
-	boundary := strings.Split(responseWriter.Header().Get(contentType), "boundary=")[1]
 	// Create the multipart reader that will read the files from the stream
-	multipartReader := multipart.NewReader(responseWriter.Body, boundary)
-	assert.NoError(t, ReadFilesFromStream(multipartReader, simpleFileHandler))
+	multipartReader := multipart.NewReader(body, multipartWriter.Boundary())
+	assert.NoError(t, ReadFilesFromStream(multipartReader, simpleFileWriter))
 
 	// Validate file 1 transferred successfully
-	file1 = filepath.Join(targetDir, "test1.txt")
-	assert.FileExists(t, file1)
-	content, err := os.ReadFile(file1)
+	content, err := os.ReadFile(filepath.Join(targetDir, file1.Name))
 	assert.NoError(t, err)
 	assert.Equal(t, file1Content, content)
-	assert.NoError(t, os.Remove(file1))
 
 	// Validate file 2 transferred successfully
-	file2 = filepath.Join(targetDir, "test2.txt")
-	assert.FileExists(t, file2)
-	content, err = os.ReadFile(file2)
+	content, err = os.ReadFile(filepath.Join(targetDir, file2.Name))
 	assert.NoError(t, err)
 	assert.Equal(t, file2Content, content)
-	assert.NoError(t, os.Remove(file2))
 }
 
-func simpleFileHandler(fileName string) (fileWriter io.WriteCloser, err error) {
+func simpleFileWriter(fileName string) (fileWriter io.WriteCloser, err error) {
 	return os.Create(filepath.Join(targetDir, fileName))
 }
