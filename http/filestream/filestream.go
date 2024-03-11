@@ -16,7 +16,7 @@ const (
 )
 
 // The expected type of function that should be provided to the ReadFilesFromStream func, that returns the writer that should handle each file
-type FileHandlerFunc func(fileName string) (writer io.Writer, err error)
+type FileHandlerFunc func(fileName string) (writer io.WriteCloser, err error)
 
 func ReadFilesFromStream(multipartReader *multipart.Reader, fileHandlerFunc FileHandlerFunc) error {
 	for {
@@ -35,6 +35,10 @@ func ReadFilesFromStream(multipartReader *multipart.Reader, fileHandlerFunc File
 		}
 		if _, err = io.Copy(fileWriter, fileReader); err != nil {
 			return fmt.Errorf("failed writing '%s' file: %w", fileName, err)
+		}
+		err = fileWriter.Close()
+		if err != nil {
+			return err
 		}
 	}
 	return nil

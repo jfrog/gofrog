@@ -57,37 +57,39 @@ func TestWriteFilesToStreamAndReadFilesFromStream(t *testing.T) {
 	assert.NoError(t, os.Remove(file2))
 }
 
-func simpleFileHandler(fileName string) (fileWriter io.Writer, err error) {
-	// #nosec G302
-	return os.OpenFile(filepath.Join(targetDir, fileName), os.O_RDWR|os.O_CREATE, 0777)
-}
-
-func fileHandlerWithHashValidation(fileName string) (fileWriter io.Writer, err error) {
-	fileWriter, err = simpleFileHandler(fileName)
+func fileHandlerWithHashValidation(fileName string) (io.WriteCloser, error) {
+	fd, err := os.Create(filepath.Join(targetDir, fileName))
 	if err != nil {
-		return
+		return nil, err
 	}
 	// GetExpectedHashFromLockFile(fileName)
 	lockFileMock := map[string]string{
 		"test1.txt": "070afab2066d3b16",
 		"test2.txt": "48bc7295420af89d",
 	}
-	return io.MultiWriter(
-		fileWriter,
-		&HashValidator{hash: xxh3.New(), actualChecksum: lockFileMock[fileName]},
-	), nil
+	return &WriteWrapper{fd: fd, hash: xxh3.New(), actualChecksum: lockFileMock[fileName]}, nil
 }
 
-type HashValidator struct {
+type WriteWrapper struct {
+	fd             *os.File
 	hash           hash.Hash64
 	actualChecksum string
 }
 
-func (hw *HashValidator) Write(p []byte) (n int, err error) {
-	n, err = hw.hash.Write(p)
-	sd := fmt.Sprintf("%x", hw.hash.Sum(nil))
-	if sd != hw.actualChecksum {
+func (ww *WriteWrapper) Write(p []byte) (n int, err error) {
+	// Write file
+	n, err = ww.Write(p)
+	if err != nil {
+		return
+	}
+	// Get checksum
+	n, err = ww.hash.Write(p)
+	sd := fmt.Sprintf("%x", ww.hash.Sum(nil))
+	if sd != ww.actualChecksum {
 		err = errors.New("checksum mismatch")
 	}
 	return
+}
+func (ww *WriteWrapper) Close() error {
+	return ww.fd.Close()
 }
