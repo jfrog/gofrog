@@ -240,7 +240,13 @@ func GetFileInfo(path string, followSymlink bool) (fileInfo os.FileInfo, err err
 
 // Close the reader/writer and append the error to the given error.
 func Close(closer io.Closer, err *error) {
-	if closeErr := closer.Close(); closeErr != nil {
-		*err = errors.Join(*err, fmt.Errorf("failed to close %T: %w", closer, closeErr))
+	var closeErr error
+	if closeErr = closer.Close(); closeErr == nil {
+		return
+	}
+
+	closeErr = fmt.Errorf("failed to close %T: %w", closer, closeErr)
+	if err != nil {
+		*err = errors.Join(*err, closeErr)
 	}
 }

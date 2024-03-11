@@ -2,17 +2,17 @@ package io
 
 import (
 	"errors"
-	"github.com/stretchr/testify/assert"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestClose(t *testing.T) {
 	var err error
-	t.TempDir()
-	f, err := os.Create(path.Join(t.TempDir(), "test"))
+	f, err := os.Create(filepath.Join(t.TempDir(), "test"))
 	assert.NoError(t, err)
 
 	Close(f, &err)
@@ -26,4 +26,8 @@ func TestClose(t *testing.T) {
 	err = errors.New("original error")
 	Close(f, &err)
 	assert.Len(t, strings.Split(err.Error(), "\n"), 2)
+
+	nilErr := new(error)
+	Close(f, nilErr)
+	assert.NotNil(t, nilErr)
 }
