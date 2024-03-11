@@ -53,7 +53,7 @@ type FileInfo struct {
 	Path string
 }
 
-func WriteFilesToStream(multipartWriter *multipart.Writer, filesList []FileInfo) (err error) {
+func WriteFilesToStream(multipartWriter *multipart.Writer, filesList []*FileInfo) (err error) {
 	for _, file := range filesList {
 		if err = writeFile(multipartWriter, file); err != nil {
 			return
@@ -65,7 +65,7 @@ func WriteFilesToStream(multipartWriter *multipart.Writer, filesList []FileInfo)
 	return multipartWriter.Close()
 }
 
-func writeFile(multipartWriter *multipart.Writer, file FileInfo) (err error) {
+func writeFile(multipartWriter *multipart.Writer, file *FileInfo) (err error) {
 	fileReader, err := os.Open(file.Path)
 	defer ioutils.Close(fileReader, &err)
 	fileWriter, err := multipartWriter.CreateFormFile(FileType, file.Name)
