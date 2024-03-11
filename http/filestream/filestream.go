@@ -6,6 +6,7 @@ import (
 	ioutils "github.com/jfrog/gofrog/io"
 	"io"
 	"mime/multipart"
+	"os"
 )
 
 const (
@@ -50,9 +51,14 @@ func readFile(fileReader *multipart.Part, fileWriterFunc FileWriterFunc) (err er
 // The expected type of function that should be provided to the WriteFilesToStream func, that returns the reader that should handle each file
 type FileReaderFunc func(fileName string) (writer io.ReadCloser, err error)
 
-func WriteFilesToStream(multipartWriter *multipart.Writer, checksumsList []string, fileReaderFunc FileReaderFunc) (err error) {
-	for _, fileChecksum := range checksumsList {
-		if err = writeFile(multipartWriter, fileChecksum, fileReaderFunc); err != nil {
+type FileInfo struct {
+	Name string
+	Path string
+}
+
+func WriteFilesToStream(multipartWriter *multipart.Writer, filesList []FileInfo) (err error) {
+	for _, file := range filesList {
+		if err = writeFile(multipartWriter, file); err != nil {
 			return
 		}
 	}
@@ -62,10 +68,10 @@ func WriteFilesToStream(multipartWriter *multipart.Writer, checksumsList []strin
 	return multipartWriter.Close()
 }
 
-func writeFile(multipartWriter *multipart.Writer, fileChecksum string, fileReaderFunc FileReaderFunc) (err error) {
-	fileReader, err := fileReaderFunc(fileChecksum)
+func writeFile(multipartWriter *multipart.Writer, file FileInfo) (err error) {
+	fileReader, err := os.Open(file.Path)
 	defer ioutils.Close(fileReader, &err)
-	fileWriter, err := multipartWriter.CreateFormFile(FileType, fileChecksum)
+	fileWriter, err := multipartWriter.CreateFormFile(FileType, file.Name)
 	if err != nil {
 		return fmt.Errorf("failed to CreateFormFile: %w", err)
 	}
