@@ -6,13 +6,11 @@ import (
 	ioutils "github.com/jfrog/gofrog/io"
 	"io"
 	"mime/multipart"
-	"net/http"
 	"os"
 )
 
 const (
-	contentType = "Content-Type"
-	FileType    = "file"
+	FileType = "file"
 )
 
 // The expected type of function that should be provided to the ReadFilesFromStream func, that returns the writer that should handle each file
@@ -50,10 +48,7 @@ func readFile(fileReader *multipart.Part, fileHandlerFunc FileHandlerFunc) (err 
 	return err
 }
 
-func WriteFilesToStream(responseWriter http.ResponseWriter, filePaths []string) (err error) {
-	multipartWriter := multipart.NewWriter(responseWriter)
-	responseWriter.Header().Set(contentType, multipartWriter.FormDataContentType())
-
+func WriteFilesToStream(multipartWriter *multipart.Writer, filePaths []string) (err error) {
 	for _, filePath := range filePaths {
 		if err = writeFile(multipartWriter, filePath); err != nil {
 			return
