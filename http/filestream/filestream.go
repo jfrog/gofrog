@@ -3,10 +3,11 @@ package filestream
 import (
 	"errors"
 	"fmt"
-	ioutils "github.com/jfrog/gofrog/io"
 	"io"
 	"mime/multipart"
 	"os"
+
+	ioutils "github.com/jfrog/gofrog/io"
 )
 
 const (
@@ -67,6 +68,9 @@ func WriteFilesToStream(multipartWriter *multipart.Writer, filesList []*FileInfo
 
 func writeFile(multipartWriter *multipart.Writer, file *FileInfo) (err error) {
 	fileReader, err := os.Open(file.Path)
+	if err != nil {
+		return fmt.Errorf("failed opening %q: %w", file, err)
+	}
 	defer ioutils.Close(fileReader, &err)
 	fileWriter, err := multipartWriter.CreateFormFile(FileType, file.Name)
 	if err != nil {
