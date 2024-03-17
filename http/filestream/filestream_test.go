@@ -2,12 +2,13 @@ package filestream
 
 import (
 	"bytes"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"mime/multipart"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var targetDir string
@@ -45,6 +46,10 @@ func TestWriteFilesToStreamAndReadFilesFromStream(t *testing.T) {
 	assert.Equal(t, file2Content, content)
 }
 
-func simpleFileWriter(fileName string) (fileWriter io.WriteCloser, err error) {
-	return os.Create(filepath.Join(targetDir, fileName))
+func simpleFileWriter(fileName string) (fileWriter []io.WriteCloser, err error) {
+	writer, err := os.Create(filepath.Join(targetDir, fileName))
+	if err != nil {
+		return nil, err
+	}
+	return []io.WriteCloser{writer}, nil
 }
