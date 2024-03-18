@@ -15,9 +15,9 @@ const (
 )
 
 // The expected type of function that should be provided to the ReadFilesFromStream func, that returns the writer that should handle each file
-type FileWriterFunc func(fileName string) (writer io.WriteCloser, err error)
+type FileWriterFunc func(fileName string) (writers []io.WriteCloser, err error)
 
-func ReadFilesFromStream(multipartReader *multipart.Reader, fileWriterFunc FileWriterFunc) error {
+func ReadFilesFromStream(multipartReader *multipart.Reader, fileWritersFunc FileWriterFunc) error {
 	for {
 		// Read the next file streamed from client
 		fileReader, err := multipartReader.NextPart()
@@ -27,8 +27,7 @@ func ReadFilesFromStream(multipartReader *multipart.Reader, fileWriterFunc FileW
 			}
 			return fmt.Errorf("failed to read file: %w", err)
 		}
-		err = readFile(fileReader, fileWriterFunc)
-		if err != nil {
+		if err = readFile(fileReader, fileWritersFunc); err != nil {
 			return err
 		}
 
@@ -42,11 +41,17 @@ func readFile(fileReader *multipart.Part, fileWriterFunc FileWriterFunc) (err er
 	if err != nil {
 		return err
 	}
-	defer ioutils.Close(fileWriter, &err)
-	if _, err = io.Copy(fileWriter, fileReader); err != nil {
+	var writers []io.Writer
+	for _, writer := range fileWriter {
+		defer ioutils.Close(writer, &err)
+		// Create a multi writer that will write the file to all the provided writers
+		// We read multipart once and write to multiple writers, so we can't use the same multipart writer multiple times
+		writers = append(writers, writer)
+	}
+	if _, err = io.Copy(ioutils.AsyncMultiWriter(10, writers...), fileReader); err != nil {
 		return fmt.Errorf("failed writing '%s' file: %w", fileName, err)
 	}
-	return err
+	return nil
 }
 
 type FileInfo struct {
