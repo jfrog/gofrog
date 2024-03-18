@@ -19,13 +19,11 @@ func TestAsyncMultiWriter(t *testing.T) {
 		assert.Equal(t, len(data), n)
 
 		// Check if data is correctly written to both writers
-		if buf1.String() != string(data) || buf2.String() != string(data) {
-			t.Errorf("Data not written correctly to all writers")
-		}
+		assert.Equal(t, string(data), buf1.String())
+		assert.Equal(t, string(data), buf2.String())
 	}
 }
 
-// TestAsyncMultiWriter_Error tests the error handling behavior of AsyncMultiWriter.
 func TestAsyncMultiWriter_Error(t *testing.T) {
 	expectedErr := errors.New("write error")
 
@@ -34,9 +32,7 @@ func TestAsyncMultiWriter_Error(t *testing.T) {
 	multiWriter := AsyncMultiWriter(2, mockWriter)
 
 	_, err := multiWriter.Write([]byte("test data"))
-	if err != expectedErr {
-		t.Errorf("Expected error: %v, got: %v", expectedErr, err)
-	}
+	assert.Equal(t, expectedErr, err)
 }
 
 // Mock writer to simulate Write errors

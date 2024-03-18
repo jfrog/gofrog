@@ -136,8 +136,8 @@ func (u *Unarchiver) byExtension(filename string) (interface{}, error) {
 
 // Make sure the archive is free from Zip Slip and Zip symlinks attacks
 func inspectArchive(archive interface{}, localArchivePath, destinationDir string) error {
-	// If the destination directory ends with a slash, delete it. 
-	// This is necessary to handle a situation where the entry path might be at the root of the destination directory, 
+	// If the destination directory ends with a slash, delete it.
+	// This is necessary to handle a situation where the entry path might be at the root of the destination directory,
 	// but in such a case "<destination-dir>/" is not a prefix of "<destination-dir>".
 	destinationDir = strings.TrimSuffix(destinationDir, string(os.PathSeparator))
 	walker, ok := archive.(archiver.Walker)
