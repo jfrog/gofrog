@@ -25,6 +25,7 @@ var src = rand.NewSource(time.Now().UnixNano())
 // #nosec G404 - No cryptographic level encryption is needed in random file
 var rnd = rand.New(src)
 
+// Create a temp file with the requested prefix at the provided dir. File length and contents are random, up to the requested max length.
 func CreateRandomLenFile(maxLen int, filesDir string, prefix string) string {
 	file, _ := os.CreateTemp(filesDir, prefix)
 	fname := file.Name()
@@ -41,6 +42,7 @@ func CreateRandomLenFile(maxLen int, filesDir string, prefix string) string {
 	return fname
 }
 
+// Create a file at the provided path with a request number of random bytes.
 func CreateRandFile(path string, len int) (file *RandFile, err error) {
 	f, err := os.Create(path)
 	if err != nil {
