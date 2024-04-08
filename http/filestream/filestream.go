@@ -1,6 +1,8 @@
 package filestream
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -11,7 +13,8 @@ import (
 )
 
 const (
-	FileType = "file"
+	FileType  = "file"
+	ErrorType = "error"
 )
 
 // The expected type of function that should be provided to the ReadFilesFromStream func, that returns the writer that should handle each file
@@ -60,21 +63,22 @@ type FileInfo struct {
 }
 
 func WriteFilesToStream(multipartWriter *multipart.Writer, filesList []*FileInfo) (err error) {
+	// Close finishes the multipart message and writes the trailing
+	// boundary end line to the output.
+	defer ioutils.Close(multipartWriter, &err)
 	for _, file := range filesList {
 		if err = writeFile(multipartWriter, file); err != nil {
-			return
+			return writeErrPart(multipartWriter, file, err)
 		}
 	}
 
-	// Close finishes the multipart message and writes the trailing
-	// boundary end line to the output.
-	return multipartWriter.Close()
+	return nil
 }
 
 func writeFile(multipartWriter *multipart.Writer, file *FileInfo) (err error) {
 	fileReader, err := os.Open(file.Path)
 	if err != nil {
-		return fmt.Errorf("failed opening %q: %w", file, err)
+		return fmt.Errorf("failed opening %q: %w", file.Name, err)
 	}
 	defer ioutils.Close(fileReader, &err)
 	fileWriter, err := multipartWriter.CreateFormFile(FileType, file.Name)
@@ -82,5 +86,21 @@ func writeFile(multipartWriter *multipart.Writer, file *FileInfo) (err error) {
 		return fmt.Errorf("failed to CreateFormFile: %w", err)
 	}
 	_, err = io.Copy(fileWriter, fileReader)
+	return err
+}
+
+func writeErrPart(multipartWriter *multipart.Writer, file *FileInfo, writeFileErr error) error {
+	fileWriter, err := multipartWriter.CreateFormField(ErrorType)
+	if err != nil {
+		return fmt.Errorf("failed to CreateFormField: %w", err)
+	}
+
+	multipartErr := NewMultipartError(file.Name, writeFileErr.Error())
+	multipartErrJSON, err := json.Marshal(multipartErr)
+	if err != nil {
+		return fmt.Errorf("failed to marshal multipart error: %w", err)
+	}
+
+	_, err = io.Copy(fileWriter, bytes.NewReader(multipartErrJSON))
 	return err
 }
