@@ -68,7 +68,7 @@ func WriteFilesToStream(multipartWriter *multipart.Writer, filesList []*FileInfo
 	defer ioutils.Close(multipartWriter, &err)
 	for _, file := range filesList {
 		if err = writeFile(multipartWriter, file); err != nil {
-			return writeErrPart(multipartWriter, file, err)
+			return writeErr(multipartWriter, file, err)
 		}
 	}
 
@@ -89,7 +89,7 @@ func writeFile(multipartWriter *multipart.Writer, file *FileInfo) (err error) {
 	return err
 }
 
-func writeErrPart(multipartWriter *multipart.Writer, file *FileInfo, writeFileErr error) error {
+func writeErr(multipartWriter *multipart.Writer, file *FileInfo, writeFileErr error) error {
 	fileWriter, err := multipartWriter.CreateFormField(ErrorType)
 	if err != nil {
 		return fmt.Errorf("failed to create form field: %w", err)
