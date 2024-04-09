@@ -63,23 +63,11 @@ type FileInfo struct {
 }
 
 func WriteFilesToStream(multipartWriter *multipart.Writer, filesList []*FileInfo) (err error) {
-	var isContentWritten bool
-	defer func() {
-		// The multipartWriter.Close() function automatically writes the closing boundary to the underlying writer,
-		// regardless of whether any content was written to it. Therefore, if no content was written
-		// (i.e., no parts were created using the multipartWriter), there is no need to explicitly close the
-		// multipartWriter. The closing boundary will be correctly handled by calling multipartWriter.Close()
-		// when it goes out of scope or when explicitly called, ensuring the proper termination of the multipart request.
-		if isContentWritten {
-			err = errors.Join(err, multipartWriter.Close())
-		}
-	}()
+	defer ioutils.Close(multipartWriter, &err)
 	for _, file := range filesList {
 		if err = writeFile(multipartWriter, file); err != nil {
-			isContentWritten, err = writeErrPart(multipartWriter, file, err)
-			return err
+			return writeErrPart(multipartWriter, file, err)
 		}
-		isContentWritten = true
 	}
 
 	return nil
@@ -99,19 +87,18 @@ func writeFile(multipartWriter *multipart.Writer, file *FileInfo) (err error) {
 	return err
 }
 
-func writeErrPart(multipartWriter *multipart.Writer, file *FileInfo, writeFileErr error) (bool, error) {
-	var isPartWritten bool
+func writeErrPart(multipartWriter *multipart.Writer, file *FileInfo, writeFileErr error) error {
 	fileWriter, err := multipartWriter.CreateFormField(ErrorType)
 	if err != nil {
-		return isPartWritten, fmt.Errorf("failed to create form field: %w", err)
+		return fmt.Errorf("failed to create form field: %w", err)
 	}
-	isPartWritten = true
+
 	multipartErr := NewMultipartError(file.Name, writeFileErr.Error())
 	multipartErrJSON, err := json.Marshal(multipartErr)
 	if err != nil {
-		return isPartWritten, fmt.Errorf("failed to marshal multipart error for file %q: %w", file.Name, err)
+		return fmt.Errorf("failed to marshal multipart error for file %q: %w", file.Name, err)
 	}
 
 	_, err = io.Copy(fileWriter, bytes.NewReader(multipartErrJSON))
-	return isPartWritten, err
+	return err
 }
