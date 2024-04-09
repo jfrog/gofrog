@@ -62,45 +62,56 @@ type FileInfo struct {
 	Path string
 }
 
-func WriteFilesToStream(multipartWriter *multipart.Writer, filesList []*FileInfo) error {
-	for _, file := range filesList {
-		if err := writeFile(multipartWriter, file); err != nil {
-			return writeErrPart(multipartWriter, file, err)
+func WriteFilesToStream(multipartWriter *multipart.Writer, filesList []*FileInfo) (err error) {
+	var isContentWritten bool
+	defer func() {
+		// The multipartWriter.Close() function automatically writes the closing boundary to the underlying writer,
+		// regardless of whether any content was written to it. Therefore, if no content was written
+		// (i.e., no parts were created using the multipartWriter), there is no need to explicitly close the
+		// multipartWriter. The closing boundary will be correctly handled by calling multipartWriter.Close()
+		// when it goes out of scope or when explicitly called, ensuring the proper termination of the multipart request.
+		if isContentWritten {
+			err = errors.Join(err, multipartWriter.Close())
 		}
+	}()
+	for _, file := range filesList {
+		if err = writeFile(multipartWriter, file); err != nil {
+			isContentWritten, err = writeErrPart(multipartWriter, file, err)
+			return err
+		}
+		isContentWritten = true
 	}
 
-	// Close finishes the multipart message and writes the trailing
-	// boundary end line to the output.
-	// We don't use defer for this because the multipart.Writer's Close() method writes regardless of whether there was an error or if writing hadn't started at all
-	return multipartWriter.Close()
+	return nil
 }
 
 func writeFile(multipartWriter *multipart.Writer, file *FileInfo) (err error) {
 	fileReader, err := os.Open(file.Path)
 	if err != nil {
-		return fmt.Errorf("failed opening %q: %w", file.Name, err)
+		return fmt.Errorf("failed opening file %q: %w", file.Name, err)
 	}
 	defer ioutils.Close(fileReader, &err)
 	fileWriter, err := multipartWriter.CreateFormFile(FileType, file.Name)
 	if err != nil {
-		return fmt.Errorf("failed to CreateFormFile: %w", err)
+		return fmt.Errorf("failed to create form file for %q: %w", file.Name, err)
 	}
 	_, err = io.Copy(fileWriter, fileReader)
 	return err
 }
 
-func writeErrPart(multipartWriter *multipart.Writer, file *FileInfo, writeFileErr error) error {
+func writeErrPart(multipartWriter *multipart.Writer, file *FileInfo, writeFileErr error) (bool, error) {
+	var isPartWritten bool
 	fileWriter, err := multipartWriter.CreateFormField(ErrorType)
 	if err != nil {
-		return fmt.Errorf("failed to CreateFormField: %w", err)
+		return isPartWritten, fmt.Errorf("failed to create form field: %w", err)
 	}
-
+	isPartWritten = true
 	multipartErr := NewMultipartError(file.Name, writeFileErr.Error())
 	multipartErrJSON, err := json.Marshal(multipartErr)
 	if err != nil {
-		return fmt.Errorf("failed to marshal multipart error: %w", err)
+		return isPartWritten, fmt.Errorf("failed to marshal multipart error for file %q: %w", file.Name, err)
 	}
 
 	_, err = io.Copy(fileWriter, bytes.NewReader(multipartErrJSON))
-	return err
+	return isPartWritten, err
 }

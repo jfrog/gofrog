@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var targetDir string
@@ -61,11 +62,11 @@ func TestWriteFilesToStreamWithError(t *testing.T) {
 
 	// Call WriteFilesToStream and expect an error
 	err := WriteFilesToStream(multipartWriter, []*FileInfo{file})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	multipartReader := multipart.NewReader(body, multipartWriter.Boundary())
-	form, err := multipartReader.ReadForm(1024)
-	assert.NoError(t, err)
+	form, err := multipartReader.ReadForm(10 * 1024)
+	require.NoError(t, err)
 
 	assert.Len(t, form.Value[ErrorType], 1)
 	var multipartErr MultipartError
