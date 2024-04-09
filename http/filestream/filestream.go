@@ -17,6 +17,11 @@ const (
 	ErrorType = "error"
 )
 
+type MultipartError struct {
+	FileName   string `json:"file_name"`
+	ErrMessage string `json:"error_message"`
+}
+
 // The expected type of function that should be provided to the ReadFilesFromStream func, that returns the writer that should handle each file
 type FileWriterFunc func(fileName string) (writers []io.WriteCloser, err error)
 
@@ -95,7 +100,7 @@ func writeErr(multipartWriter *multipart.Writer, file *FileInfo, writeFileErr er
 		return fmt.Errorf("failed to create form field: %w", err)
 	}
 
-	multipartErr := NewMultipartError(file.Name, writeFileErr.Error())
+	multipartErr := MultipartError{FileName: file.Name, ErrMessage: writeFileErr.Error()}
 	multipartErrJSON, err := json.Marshal(multipartErr)
 	if err != nil {
 		return fmt.Errorf("failed to marshal multipart error for file %q: %w", file.Name, err)

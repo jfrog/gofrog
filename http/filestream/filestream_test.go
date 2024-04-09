@@ -49,12 +49,9 @@ func TestWriteFilesToStreamAndReadFilesFromStream(t *testing.T) {
 }
 
 func TestWriteFilesToStreamWithError(t *testing.T) {
-	// Create a temporary directory for the test
-	sourceDir := t.TempDir()
-
 	nonExistentFileName := "nonexistent.txt"
 	// Create a FileInfo with a non-existent file
-	file := &FileInfo{Name: nonExistentFileName, Path: filepath.Join(sourceDir, nonExistentFileName)}
+	file := &FileInfo{Name: nonExistentFileName, Path: nonExistentFileName}
 
 	// Create a buffer and a multipart writer
 	body := &bytes.Buffer{}
@@ -73,7 +70,7 @@ func TestWriteFilesToStreamWithError(t *testing.T) {
 	assert.NoError(t, json.Unmarshal([]byte(form.Value[ErrorType][0]), &multipartErr))
 
 	assert.Equal(t, nonExistentFileName, multipartErr.FileName)
-	assert.NotEmpty(t, multipartErr.Error())
+	assert.NotEmpty(t, multipartErr.ErrMessage)
 }
 
 func simpleFileWriter(fileName string) (fileWriter []io.WriteCloser, err error) {
