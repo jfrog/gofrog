@@ -63,6 +63,8 @@ type FileInfo struct {
 }
 
 func WriteFilesToStream(multipartWriter *multipart.Writer, filesList []*FileInfo) (err error) {
+	// Close finishes the multipart message and writes the trailing
+	// boundary end line to the output, thereby marking the EOF.
 	defer ioutils.Close(multipartWriter, &err)
 	for _, file := range filesList {
 		if err = writeFile(multipartWriter, file); err != nil {
