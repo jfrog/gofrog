@@ -10,6 +10,7 @@ import (
 	"os"
 
 	ioutils "github.com/jfrog/gofrog/io"
+	"github.com/schollz/progressbar/v3"
 )
 
 const (
@@ -26,6 +27,10 @@ type MultipartError struct {
 type FileWriterFunc func(fileName string) (writers []io.WriteCloser, err error)
 
 func ReadFilesFromStream(multipartReader *multipart.Reader, fileWritersFunc FileWriterFunc) error {
+	return ReadFilesFromStreamWithProgressBar(multipartReader, fileWritersFunc, nil)
+}
+
+func ReadFilesFromStreamWithProgressBar(multipartReader *multipart.Reader, fileWritersFunc FileWriterFunc, bar *progressbar.ProgressBar) error {
 	for {
 		// Read the next file streamed from client
 		fileReader, err := multipartReader.NextPart()
@@ -38,7 +43,9 @@ func ReadFilesFromStream(multipartReader *multipart.Reader, fileWritersFunc File
 		if err = readFile(fileReader, fileWritersFunc); err != nil {
 			return err
 		}
-
+		if bar != nil {
+			bar.Add(1)
+		}
 	}
 	return nil
 }
