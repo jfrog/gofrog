@@ -1,6 +1,8 @@
 package filestream
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -11,8 +13,14 @@ import (
 )
 
 const (
-	FileType = "file"
+	FileType  = "file"
+	ErrorType = "error"
 )
+
+type MultipartError struct {
+	FileName   string `json:"file_name"`
+	ErrMessage string `json:"error_message"`
+}
 
 // The expected type of function that should be provided to the ReadFilesFromStream func, that returns the writer that should handle each file
 type FileWriterFunc func(fileName string) (writers []io.WriteCloser, err error)
@@ -60,27 +68,44 @@ type FileInfo struct {
 }
 
 func WriteFilesToStream(multipartWriter *multipart.Writer, filesList []*FileInfo) (err error) {
+	// Close finishes the multipart message and writes the trailing
+	// boundary end line to the output, thereby marking the EOF.
+	defer ioutils.Close(multipartWriter, &err)
 	for _, file := range filesList {
 		if err = writeFile(multipartWriter, file); err != nil {
-			return
+			return writeErr(multipartWriter, file, err)
 		}
 	}
 
-	// Close finishes the multipart message and writes the trailing
-	// boundary end line to the output.
-	return multipartWriter.Close()
+	return nil
 }
 
 func writeFile(multipartWriter *multipart.Writer, file *FileInfo) (err error) {
 	fileReader, err := os.Open(file.Path)
 	if err != nil {
-		return fmt.Errorf("failed opening %q: %w", file, err)
+		return fmt.Errorf("failed opening file %q: %w", file.Name, err)
 	}
 	defer ioutils.Close(fileReader, &err)
 	fileWriter, err := multipartWriter.CreateFormFile(FileType, file.Name)
 	if err != nil {
-		return fmt.Errorf("failed to CreateFormFile: %w", err)
+		return fmt.Errorf("failed to create form file for %q: %w", file.Name, err)
 	}
 	_, err = io.Copy(fileWriter, fileReader)
+	return err
+}
+
+func writeErr(multipartWriter *multipart.Writer, file *FileInfo, writeFileErr error) error {
+	fileWriter, err := multipartWriter.CreateFormField(ErrorType)
+	if err != nil {
+		return fmt.Errorf("failed to create form field: %w", err)
+	}
+
+	multipartErr := MultipartError{FileName: file.Name, ErrMessage: writeFileErr.Error()}
+	multipartErrJSON, err := json.Marshal(multipartErr)
+	if err != nil {
+		return fmt.Errorf("failed to marshal multipart error for file %q: %w", file.Name, err)
+	}
+
+	_, err = io.Copy(fileWriter, bytes.NewReader(multipartErrJSON))
 	return err
 }
