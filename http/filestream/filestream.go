@@ -62,17 +62,17 @@ type FileInfo struct {
 	Path string
 }
 
-func WriteFilesToStream(multipartWriter *multipart.Writer, filesList []*FileInfo) (err error) {
-	// Close finishes the multipart message and writes the trailing
-	// boundary end line to the output.
-	defer ioutils.Close(multipartWriter, &err)
+func WriteFilesToStream(multipartWriter *multipart.Writer, filesList []*FileInfo) error {
 	for _, file := range filesList {
-		if err = writeFile(multipartWriter, file); err != nil {
+		if err := writeFile(multipartWriter, file); err != nil {
 			return writeErrPart(multipartWriter, file, err)
 		}
 	}
 
-	return nil
+	// Close finishes the multipart message and writes the trailing
+	// boundary end line to the output.
+	// We don't use defer for this because the multipart.Writer's Close() method writes regardless of whether there was an error or if writing hadn't started at all
+	return multipartWriter.Close()
 }
 
 func writeFile(multipartWriter *multipart.Writer, file *FileInfo) (err error) {
