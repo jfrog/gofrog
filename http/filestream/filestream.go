@@ -73,7 +73,8 @@ func WriteFilesToStream(multipartWriter *multipart.Writer, filesList []*FileInfo
 	defer ioutils.Close(multipartWriter, &err)
 	for _, file := range filesList {
 		if err = writeFile(multipartWriter, file); err != nil {
-			return writeErr(multipartWriter, file, err)
+			// Returning the error from writeFile with a possible error from the writeErr function
+			return errors.Join(err, writeErr(multipartWriter, file, err))
 		}
 	}
 
