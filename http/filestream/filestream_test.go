@@ -59,7 +59,7 @@ func TestWriteFilesToStreamWithError(t *testing.T) {
 
 	// Call WriteFilesToStream and expect an error
 	err := WriteFilesToStream(multipartWriter, []*FileInfo{file})
-	require.NoError(t, err)
+	assert.Error(t, err)
 
 	multipartReader := multipart.NewReader(body, multipartWriter.Boundary())
 	form, err := multipartReader.ReadForm(10 * 1024)
