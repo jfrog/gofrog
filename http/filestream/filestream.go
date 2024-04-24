@@ -27,10 +27,6 @@ type MultipartError struct {
 type FileWriterFunc func(fileName string) (writers []io.WriteCloser, err error)
 
 func ReadFilesFromStream(multipartReader *multipart.Reader, fileWritersFunc FileWriterFunc) error {
-	return ReadFilesFromStreamWithProgressBar(multipartReader, fileWritersFunc, nil)
-}
-
-func ReadFilesFromStreamWithProgressBar(multipartReader *multipart.Reader, fileWritersFunc FileWriterFunc, bar *progressbar.ProgressBar) error {
 	for {
 		// Read the next file streamed from client
 		fileReader, err := multipartReader.NextPart()
@@ -42,9 +38,6 @@ func ReadFilesFromStreamWithProgressBar(multipartReader *multipart.Reader, fileW
 		}
 		if err = readFile(fileReader, fileWritersFunc); err != nil {
 			return err
-		}
-		if bar != nil {
-			bar.Add(1)
 		}
 	}
 	return nil
