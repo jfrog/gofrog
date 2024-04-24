@@ -72,7 +72,7 @@ func WriteFilesToStream(multipartWriter *multipart.Writer, filesList []*FileInfo
 	return WriteFilesToStreamWithProgressBar(multipartWriter, filesList, nil)
 }
 
-// WriteFilesToStreamWithProgressBar is DEPRECATED, use WriteFilesToStream instead
+// Deprecated: Use WriteFilesToStream instead
 func WriteFilesToStreamWithProgressBar(multipartWriter *multipart.Writer, filesList []*FileInfo, bar *progressbar.ProgressBar) (err error) {
 	// Close finishes the multipart message and writes the trailing
 	// boundary end line to the output, thereby marking the EOF.
