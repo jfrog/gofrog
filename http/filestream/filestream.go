@@ -10,6 +10,7 @@ import (
 	"os"
 
 	ioutils "github.com/jfrog/gofrog/io"
+	"github.com/schollz/progressbar/v3"
 )
 
 const (
@@ -68,6 +69,11 @@ type FileInfo struct {
 }
 
 func WriteFilesToStream(multipartWriter *multipart.Writer, filesList []*FileInfo) (err error) {
+	return WriteFilesToStreamWithProgressBar(multipartWriter, filesList, nil)
+}
+
+// Deprecated: Use WriteFilesToStream instead
+func WriteFilesToStreamWithProgressBar(multipartWriter *multipart.Writer, filesList []*FileInfo, bar *progressbar.ProgressBar) (err error) {
 	// Close finishes the multipart message and writes the trailing
 	// boundary end line to the output, thereby marking the EOF.
 	defer ioutils.Close(multipartWriter, &err)
@@ -75,6 +81,12 @@ func WriteFilesToStream(multipartWriter *multipart.Writer, filesList []*FileInfo
 		if err = writeFile(multipartWriter, file); err != nil {
 			// Returning the error from writeFile with a possible error from the writeErr function
 			return errors.Join(err, writeErr(multipartWriter, file, err))
+		}
+		if bar != nil {
+			err = bar.Add(1)
+			if err != nil {
+				return fmt.Errorf("failed to update progress bar: %w", err)
+			}
 		}
 	}
 
