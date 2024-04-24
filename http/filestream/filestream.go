@@ -82,7 +82,10 @@ func WriteFilesToStreamWithProgressBar(multipartWriter *multipart.Writer, filesL
 			return errors.Join(err, writeErr(multipartWriter, file, err))
 		}
 		if bar != nil {
-			bar.Add(1)
+			err = bar.Add(1)
+			if err != nil {
+				return fmt.Errorf("failed to update progress bar: %w", err)
+			}
 		}
 	}
 
