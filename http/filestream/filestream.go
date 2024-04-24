@@ -39,6 +39,7 @@ func ReadFilesFromStream(multipartReader *multipart.Reader, fileWritersFunc File
 		if err = readFile(fileReader, fileWritersFunc); err != nil {
 			return err
 		}
+		
 	}
 	return nil
 }
