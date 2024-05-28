@@ -132,6 +132,6 @@ func TestUnarchiveDotDir(t *testing.T) {
 
 func runUnarchive(t *testing.T, uarchiver Unarchiver, archiveFileName, sourceDir, targetDir string) error {
 	archivePath := filepath.Join("testdata", sourceDir, archiveFileName)
-	assert.True(t, uarchiver.IsSupportedArchive(archivePath))
+	assert.True(t, IsSupportedArchive(archivePath))
 	return uarchiver.Unarchive(filepath.Join("testdata", sourceDir, archiveFileName), archiveFileName, targetDir)
 }

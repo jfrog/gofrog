@@ -24,7 +24,7 @@ var supportedArchives = []archiver.ExtensionChecker{
 	&archiver.Xz{}, &archiver.Zstd{},
 }
 
-func (u *Unarchiver) IsSupportedArchive(filePath string) bool {
+func IsSupportedArchive(filePath string) bool {
 	archive, err := archiver.ByExtension(filePath)
 	if err != nil {
 		return false
