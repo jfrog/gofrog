@@ -430,16 +430,21 @@ func ListFilesByFilterFunc(path string, filterFunc func(filePath string) (bool, 
 
 func DownloadFile(downloadTo string, fromUrl string) (err error) {
 	// Get the data
-	resp, err := http.Get(fromUrl)
+	httpClient := &http.Client{}
+	req, err := http.NewRequest(http.MethodGet, fromUrl, nil)
 	if err != nil {
-		return
+		return err
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return err
 	}
 	defer func() {
 		err = errors.Join(err, resp.Body.Close())
 	}()
 	if resp.StatusCode != http.StatusOK {
-		err = fmt.Errorf("download failed. status code: %s", resp.Status)
-		return
+		return fmt.Errorf("download failed. status code: %s", resp.Status)
 	}
 	// Create the file
 	var out *os.File
@@ -691,7 +696,7 @@ func GetFileAndDirFromPath(path string) (fileName, dir string) {
 
 func CreateFilePath(localPath, fileName string) (string, error) {
 	if localPath != "" {
-		err := os.MkdirAll(localPath, 0777)
+		err := os.MkdirAll(localPath, 0750)
 		if err != nil {
 			return "", err
 		}
