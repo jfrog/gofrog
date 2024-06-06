@@ -17,8 +17,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/jfrog/gofrog/crypto"
 )
 
 const (
@@ -764,34 +762,5 @@ func ReadNLines(path string, total int) (lines []string, err error) {
 			return
 		}
 	}
-	return
-}
-
-type FileDetails struct {
-	Checksum crypto.Checksum
-	Size     int64
-}
-
-func GetFileDetails(filePath string, includeChecksums bool) (details *FileDetails, err error) {
-	details = new(FileDetails)
-	if includeChecksums {
-		details.Checksum, err = crypto.CalcChecksumDetails(filePath)
-		if err != nil {
-			return
-		}
-	} else {
-		details.Checksum = crypto.Checksum{}
-	}
-
-	file, err := os.Open(filePath)
-	defer Close(file, &err)
-	if err != nil {
-		return
-	}
-	fileInfo, err := file.Stat()
-	if err != nil {
-		return
-	}
-	details.Size = fileInfo.Size()
 	return
 }

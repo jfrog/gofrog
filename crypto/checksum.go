@@ -153,3 +153,32 @@ func CalcChecksumDetails(filePath string) (checksum Checksum, err error) {
 	checksum = Checksum{Md5: checksums[MD5], Sha1: checksums[SHA1], Sha256: checksums[SHA256]}
 	return
 }
+
+type FileDetails struct {
+	Checksum Checksum
+	Size     int64
+}
+
+func GetFileDetails(filePath string, includeChecksums bool) (details *FileDetails, err error) {
+	details = new(FileDetails)
+	if includeChecksums {
+		details.Checksum, err = CalcChecksumDetails(filePath)
+		if err != nil {
+			return
+		}
+	} else {
+		details.Checksum = Checksum{}
+	}
+
+	file, err := os.Open(filePath)
+	defer ioutils.Close(file, &err)
+	if err != nil {
+		return
+	}
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return
+	}
+	details.Size = fileInfo.Size()
+	return
+}
