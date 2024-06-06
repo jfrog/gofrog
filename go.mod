@@ -4,10 +4,13 @@ go 1.20
 
 require (
 	github.com/jfrog/archiver/v3 v3.6.0
+	github.com/minio/sha256-simd v1.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/schollz/progressbar/v3 v3.14.2
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 )
+
+require github.com/klauspost/cpuid/v2 v2.2.3 // indirect
 
 require (
 	github.com/andybalholm/brotli v1.1.0 // indirect
