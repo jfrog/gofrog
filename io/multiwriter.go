@@ -7,7 +7,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-var ErrShortWrite = errors.New("The number of bytes written is less than the length of the input")
+var ErrShortWrite = errors.New("the number of bytes written is less than the length of the input")
 
 type asyncMultiWriter struct {
 	writers []io.Writer
