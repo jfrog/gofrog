@@ -170,12 +170,7 @@ func GetFileDetails(filePath string, includeChecksums bool) (details *FileDetail
 		details.Checksum = Checksum{}
 	}
 
-	file, err := os.Open(filePath)
-	defer ioutils.Close(file, &err)
-	if err != nil {
-		return
-	}
-	fileInfo, err := file.Stat()
+	fileInfo, err := os.Stat(filePath)
 	if err != nil {
 		return
 	}
