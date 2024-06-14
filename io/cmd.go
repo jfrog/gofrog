@@ -82,7 +82,7 @@ func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdO
 	}
 
 	cmd := config.GetCmd()
-	stdoutReader, stderrReader, err := createCommandReaders(cmd)
+	stdoutReader, stderrReader, err := createCommandReaders(cmd, config)
 	if err != nil {
 		return
 	}
@@ -95,6 +95,8 @@ func RunCmdWithOutputParser(config CmdConfig, prompt bool, regExpStruct ...*CmdO
 	go func() {
 		defer wg.Done()
 		for stdoutReader.Scan() {
+			// Notice that a line might actually be a multiline string if CmdConfig specifies a Split() function that
+			// produces such!
 			line, _ := processLine(regExpStruct, stdoutReader.Text(), errChan)
 			if prompt {
 				fmt.Fprintf(os.Stderr, line+"\n")
@@ -175,7 +177,7 @@ func processLine(regExpStruct []*CmdOutputPattern, line string, errChan chan err
 // Create command stdout and stderr readers.
 // The returned readers are automatically closed after the running command exit and shouldn't be closed explicitly.
 // cmd - The command to execute
-func createCommandReaders(cmd *exec.Cmd) (*bufio.Scanner, *bufio.Scanner, error) {
+func createCommandReaders(cmd *exec.Cmd, config CmdConfig) (*bufio.Scanner, *bufio.Scanner, error) {
 	stdoutReader, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, nil, err
@@ -186,7 +188,13 @@ func createCommandReaders(cmd *exec.Cmd) (*bufio.Scanner, *bufio.Scanner, error)
 		return nil, nil, err
 	}
 
-	return bufio.NewScanner(stdoutReader), bufio.NewScanner(stderrReader), nil
+	stdoutScanner := bufio.NewScanner(stdoutReader)
+	stderrScanner := bufio.NewScanner(stderrReader)
+	if configSplit, ok := config.(CmdConfigSplit); ok {
+		stdoutScanner.Split(configSplit.Split())
+		stderrScanner.Split(configSplit.Split())
+	}
+	return stdoutScanner, stderrScanner, nil
 }
 
 type CmdConfig interface {
@@ -194,6 +202,16 @@ type CmdConfig interface {
 	GetEnv() map[string]string
 	GetStdWriter() io.WriteCloser
 	GetErrWriter() io.WriteCloser
+}
+
+// CmdConfigSplit
+// Optional Extension to CmdConfig
+// If the caller implements a split function for its CmdConfig, it will be honored
+// Otherwise the default applies (split and parse command output by line)
+// Note: Will not add the Split function to CmdConfig, since this would require refactoring the entire code base.
+// Also, this allows implementing optionality
+type CmdConfigSplit interface {
+	Split() bufio.SplitFunc
 }
 
 // RegExp - The regexp that the line will be searched upon.
