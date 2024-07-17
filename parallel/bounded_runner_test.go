@@ -3,6 +3,7 @@ package parallel
 import (
 	"crypto/rand"
 	"fmt"
+	"math/big"
 	"strconv"
 	"strings"
 	"sync"
@@ -199,7 +200,11 @@ func produceTasks(runner *runner, results chan int, errorsQueue *ErrorsQueue, ta
 func createSuccessfulFlowTaskFunc(num int, result chan int) TaskFunc {
 	return func(threadId int) error {
 		result <- num
-		time.Sleep(time.Millisecond * time.Duration(rand.Intn(50)))
+		n, err := rand.Int(rand.Reader, big.NewInt(50))
+		if err != nil {
+			return err
+		}
+		time.Sleep(time.Millisecond * time.Duration(n.Int64()))
 		return nil
 	}
 }
@@ -210,7 +215,11 @@ func createTaskWithErrorFunc(num int, result chan int) TaskFunc {
 			return fmt.Errorf("num: %d, above 50 going to stop", num)
 		}
 		result <- num
-		time.Sleep(time.Millisecond * time.Duration(rand.Intn(50)))
+		n, err := rand.Int(rand.Reader, big.NewInt(50))
+		if err != nil {
+			return err
+		}
+		time.Sleep(time.Millisecond * time.Duration(n.Int64()))
 		return nil
 	}
 }
@@ -221,7 +230,11 @@ func createTaskWithIntAsErrorFunc(num int, result chan int) TaskFunc {
 			return fmt.Errorf("%d", num)
 		}
 		result <- num
-		time.Sleep(time.Millisecond * time.Duration(rand.Intn(50)))
+		n, err := rand.Int(rand.Reader, big.NewInt(50))
+		if err != nil {
+			return err
+		}
+		time.Sleep(time.Millisecond * time.Duration(n.Int64()))
 		return nil
 	}
 }
