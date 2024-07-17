@@ -1,8 +1,8 @@
 package parallel
 
 import (
+	"crypto/rand"
 	"fmt"
-	"math/rand"
 	"strconv"
 	"strings"
 	"sync"
