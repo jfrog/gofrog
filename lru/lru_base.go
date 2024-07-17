@@ -56,22 +56,28 @@ func (c *cacheBase) Get(key string) (value interface{}, ok bool) {
 		if c.Expiry != time.Duration(0) {
 			unixNow := time.Now().UnixNano() / int64(time.Millisecond)
 			unixExpiry := int64(c.Expiry / time.Millisecond)
-			if (unixNow - ele.Value.(*entry).timeInsert) > unixExpiry {
-				c.removeElement(ele)
-				return nil, false
+			if ent, ok := ele.Value.(*entry); ok {
+				if (unixNow - ent.timeInsert) > unixExpiry {
+					c.removeElement(ele)
+					return nil, false
+				}
 			}
 		}
 		c.ll.MoveToFront(ele)
-		return ele.Value.(*entry).value, true
+		if ent, ok := ele.Value.(*entry); ok {
+			return ent.value, true
+		}
 	}
 	return nil, false
 }
 
 // Updates element's value without updating its "Least-Recently-Used" status
-func (c *cacheBase) UpdateElement(key string, value interface{}) {
+func (c *cacheBase) Set(key string, value interface{}) {
 	if ee, ok := c.cache[key]; ok {
-		ee.Value.(*entry).value = value
-		return
+		if ent, ok := ee.Value.(*entry); ok {
+			ent.value = value
+			return
+		}
 	}
 }
 
