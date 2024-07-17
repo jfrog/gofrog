@@ -96,10 +96,12 @@ func (c *cacheBase) RemoveOldest() {
 
 func (c *cacheBase) removeElement(e *list.Element) {
 	c.ll.Remove(e)
-	kv := e.Value.(*entry)
-	delete(c.cache, kv.key)
-	if c.OnEvicted != nil {
-		c.OnEvicted(kv.key, kv.value)
+	kv, ok := e.Value.(*entry)
+	if !ok {
+		delete(c.cache, kv.key)
+		if c.OnEvicted != nil {
+			c.OnEvicted(kv.key, kv.value)
+		}
 	}
 }
 
@@ -111,11 +113,13 @@ func (c *cacheBase) Len() int {
 // Clear purges all stored items from the cache.
 func (c *cacheBase) Clear() {
 	for _, e := range c.cache {
-		kv := e.Value.(*entry)
-		if c.OnEvicted != nil {
-			c.OnEvicted(kv.key, kv.value)
+		kv, ok := e.Value.(*entry)
+		if !ok {
+			if c.OnEvicted != nil {
+				c.OnEvicted(kv.key, kv.value)
+			}
+			delete(c.cache, kv.key)
 		}
-		delete(c.cache, kv.key)
 	}
 	c.ll.Init()
 }
