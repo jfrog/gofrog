@@ -3,6 +3,7 @@ module github.com/jfrog/gofrog
 go 1.22
 
 require (
+	github.com/gookit/color v1.5.4
 	github.com/jfrog/archiver/v3 v3.6.0
 	github.com/minio/sha256-simd v1.0.1
 	github.com/pkg/errors v0.9.1
@@ -25,6 +26,7 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/ulikunitz/xz v0.5.11 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
+	github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778 // indirect
 	golang.org/x/sync v0.6.0
 	golang.org/x/sys v0.17.0 // indirect
 	golang.org/x/term v0.17.0 // indirect
