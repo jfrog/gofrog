@@ -2,7 +2,7 @@ package fanout
 
 import (
 	"bytes"
-	//#nosec G401 -- Sha1 is supported by Artifactory.
+	//#nosec G505 -- Sha1 is supported by Artifactory.
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
