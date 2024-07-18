@@ -17,6 +17,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jfrog/gofrog/log"
 )
 
 const (
@@ -325,8 +327,7 @@ func MoveFile(sourcePath, destPath string) (err error) {
 		return
 	}
 
-	var outputFile *os.File
-	outputFile, err = os.Create(destPath)
+	outputFile, err := createFileForWriting(destPath)
 	if err != nil {
 		return
 	}
@@ -351,6 +352,25 @@ func MoveFile(sourcePath, destPath string) (err error) {
 	inputFileOpen = false
 	err = os.Remove(sourcePath)
 	return
+}
+
+// Create file for writing. If file already exists, it will be truncated.
+// If the file exists and is read-only, the function will try to change the file permissions to read-write.
+// The caller should update the permissions and close the file when done.
+func createFileForWriting(destPath string) (*os.File, error) {
+	// Try to create the destination file
+	outputFile, err := os.Create(destPath)
+	if err == nil {
+		return outputFile, nil
+	}
+
+	log.Debug("Couldn't open the destination file: '" + destPath + "'. Trying to set the file permissions to read-write.")
+	if err = os.Chmod(destPath, 0600); err != nil {
+		return nil, err
+	}
+
+	// Try to open the destination file again
+	return os.Create(destPath)
 }
 
 // Return the list of files and directories in the specified path
