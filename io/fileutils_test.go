@@ -93,3 +93,70 @@ func TestCreateTempDir(t *testing.T) {
 		assert.NoError(t, os.RemoveAll(tempDir))
 	}()
 }
+
+func TestMoveFile_New(t *testing.T) {
+	// Init test
+	sourcePath, destPath := initMoveTest(t)
+
+	// Move file
+	assert.NoError(t, MoveFile(sourcePath, destPath))
+
+	// Assert expected file paths
+	assert.FileExists(t, destPath)
+	assert.NoFileExists(t, sourcePath)
+}
+
+func TestMoveFile_Override(t *testing.T) {
+	// Init test
+	sourcePath, destPath := initMoveTest(t)
+	err := os.WriteFile(destPath, []byte("dst"), 0600)
+	assert.NoError(t, err)
+
+	// Move file
+	assert.NoError(t, MoveFile(sourcePath, destPath))
+
+	// Assert file overidden
+	assert.FileExists(t, destPath)
+	destFileContent, err := os.ReadFile(destPath)
+	assert.NoError(t, err)
+	assert.Equal(t, "src", string(destFileContent))
+
+	// Assert source file removed
+	assert.NoFileExists(t, sourcePath)
+}
+
+func TestMoveFile_NoPerm(t *testing.T) {
+	// Init test
+	sourcePath, destPath := initMoveTest(t)
+	err := os.WriteFile(destPath, []byte("dst"), 0600)
+	assert.NoError(t, err)
+
+	// Remove all permissions from destination file
+	assert.NoError(t, os.Chmod(destPath, 0000))
+	_, err = os.Create(destPath)
+	assert.Error(t, err)
+
+	// Move file
+	assert.NoError(t, MoveFile(sourcePath, destPath))
+
+	// Assert file overidden
+	assert.FileExists(t, destPath)
+	destFileContent, err := os.ReadFile(destPath)
+	assert.NoError(t, err)
+	assert.Equal(t, "src", string(destFileContent))
+	
+	// Assert source file removed
+	assert.NoFileExists(t, sourcePath)
+}
+
+func initMoveTest(t *testing.T) (sourcePath, destPath string) {
+	// Create source and destination paths
+	tmpDir := t.TempDir()
+	sourcePath = filepath.Join(tmpDir, "src")
+	destPath = filepath.Join(tmpDir, "dst")
+
+	// Write content to source file
+	err := os.WriteFile(sourcePath, []byte("src"), 0600)
+	assert.NoError(t, err)
+	return
+}
