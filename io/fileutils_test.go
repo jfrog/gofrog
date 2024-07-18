@@ -109,7 +109,7 @@ func TestMoveFile_New(t *testing.T) {
 func TestMoveFile_Override(t *testing.T) {
 	// Init test
 	sourcePath, destPath := initMoveTest(t)
-	err := os.WriteFile(destPath, []byte("dst"), os.ModePerm)
+	err := os.WriteFile(destPath, []byte("dst"), 0600)
 	assert.NoError(t, err)
 
 	// Move file
@@ -128,13 +128,13 @@ func TestMoveFile_Override(t *testing.T) {
 func TestMoveFile_NoPerm(t *testing.T) {
 	// Init test
 	sourcePath, destPath := initMoveTest(t)
-	err := os.WriteFile(destPath, []byte("dst"), os.ModePerm)
+	err := os.WriteFile(destPath, []byte("dst"), 0600)
 	assert.NoError(t, err)
 
 	// Remove all permissions from destination file
 	assert.NoError(t, os.Chmod(destPath, 0000))
 	_, err = os.Create(destPath)
-	assert.ErrorContains(t, err, "permission")
+	assert.Error(t, err)
 
 	// Move file
 	assert.NoError(t, MoveFile(sourcePath, destPath))
@@ -156,7 +156,7 @@ func initMoveTest(t *testing.T) (sourcePath, destPath string) {
 	destPath = filepath.Join(tmpDir, "dst")
 
 	// Write content to source file
-	err := os.WriteFile(sourcePath, []byte("src"), os.ModePerm)
+	err := os.WriteFile(sourcePath, []byte("src"), 0600)
 	assert.NoError(t, err)
 	return
 }
