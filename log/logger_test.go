@@ -8,11 +8,11 @@ import (
 )
 
 func SetEnvironmentVariableForLogLevel(t *testing.T, level string) {
-	assert.NoError(t, os.Setenv(_logLevelEnv, level))
+	assert.NoError(t, os.Setenv(LogLevelEnv, level))
 }
 
 func ResetEnvironmentVariableForLogLevel(t *testing.T) {
-	assert.NoError(t, os.Unsetenv(_logLevelEnv))
+	assert.NoError(t, os.Unsetenv(LogLevelEnv))
 }
 
 func TestLogger_WithDefaultInfoLogLevel_LogsInfoAndAbove(t *testing.T) {
