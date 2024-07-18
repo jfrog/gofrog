@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	_logLevelEnv = "JFROG_LOG_LEVEL"
+	LogLevelEnv = "JFROG_LOG_LEVEL"
 )
 
 type Log interface {
@@ -48,7 +48,7 @@ const (
 )
 
 func getLogLevel() LevelType {
-	switch strings.ToUpper(os.Getenv(_logLevelEnv)) {
+	switch strings.ToUpper(os.Getenv(LogLevelEnv)) {
 	case "ERROR":
 		return ERROR
 	case "WARN":
