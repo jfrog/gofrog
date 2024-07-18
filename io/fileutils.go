@@ -364,7 +364,7 @@ func createFileForWriting(destPath string) (*os.File, error) {
 		return outputFile, nil
 	}
 
-	log.Debug("Couldn't open the destination file: '" + destPath + "'. Trying to set the file permissions to read-write.")
+	log.Debug(fmt.Sprintf("Couldn't to open the destination file: '%s' due to %s. Attempting to set the file permissions to read-write.", destPath, err.Error()))
 	if err = os.Chmod(destPath, 0600); err != nil {
 		return nil, err
 	}
