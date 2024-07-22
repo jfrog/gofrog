@@ -16,6 +16,9 @@ jobs:
         # The repository scanning will be triggered periodically on the following branches.
         branch: [ "master" ]
     steps:
+      - name: Setup Go with cache
+        uses: jfrog/.github/actions/install-go-with-cache@main
+
       - uses: jfrog/frogbot@v2
         env:
           JFROG_CLI_LOG_LEVEL: "DEBUG"

@@ -1,9 +1,10 @@
 package parallel
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"sync"
 	"testing"
 	"time"
@@ -40,7 +41,9 @@ func TestAddTask(t *testing.T) {
 		x := i
 		_, err := runner.AddTask(func(int) error {
 			results <- x
-			time.Sleep(time.Millisecond * time.Duration(rand.Intn(50)))
+			n, err := rand.Int(rand.Reader, big.NewInt(50))
+			assert.NoError(t, err)
+			time.Sleep(time.Millisecond * time.Duration(n.Int64()))
 			if float64(x) > float64(count)/2 {
 				return fmt.Errorf("second half value %d not counted", x)
 			}

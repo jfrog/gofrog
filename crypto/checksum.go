@@ -27,7 +27,8 @@ const (
 
 var algorithmFunc = map[Algorithm]func() hash.Hash{
 	// Go native crypto algorithms:
-	MD5:  md5.New,
+	MD5: md5.New,
+	//#nosec G401 -- Sha1 is supported by Artifactory.
 	SHA1: sha1.New,
 	// sha256-simd algorithm:
 	SHA256: sha256.New,
