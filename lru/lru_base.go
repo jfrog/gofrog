@@ -56,13 +56,17 @@ func (c *cacheBase) Get(key string) (value interface{}, ok bool) {
 		if c.Expiry != time.Duration(0) {
 			unixNow := time.Now().UnixNano() / int64(time.Millisecond)
 			unixExpiry := int64(c.Expiry / time.Millisecond)
-			if (unixNow - ele.Value.(*entry).timeInsert) > unixExpiry {
-				c.removeElement(ele)
-				return nil, false
+			if ent, ok := ele.Value.(*entry); ok {
+				if (unixNow - ent.timeInsert) > unixExpiry {
+					c.removeElement(ele)
+					return nil, false
+				}
 			}
 		}
 		c.ll.MoveToFront(ele)
-		return ele.Value.(*entry).value, true
+		if ent, ok := ele.Value.(*entry); ok {
+			return ent.value, true
+		}
 	}
 	return nil, false
 }
@@ -70,8 +74,10 @@ func (c *cacheBase) Get(key string) (value interface{}, ok bool) {
 // Updates element's value without updating its "Least-Recently-Used" status
 func (c *cacheBase) UpdateElement(key string, value interface{}) {
 	if ee, ok := c.cache[key]; ok {
-		ee.Value.(*entry).value = value
-		return
+		if ent, ok := ee.Value.(*entry); ok {
+			ent.value = value
+			return
+		}
 	}
 }
 
@@ -90,10 +96,12 @@ func (c *cacheBase) RemoveOldest() {
 
 func (c *cacheBase) removeElement(e *list.Element) {
 	c.ll.Remove(e)
-	kv := e.Value.(*entry)
-	delete(c.cache, kv.key)
-	if c.OnEvicted != nil {
-		c.OnEvicted(kv.key, kv.value)
+	kv, ok := e.Value.(*entry)
+	if ok {
+		delete(c.cache, kv.key)
+		if c.OnEvicted != nil {
+			c.OnEvicted(kv.key, kv.value)
+		}
 	}
 }
 
@@ -105,11 +113,13 @@ func (c *cacheBase) Len() int {
 // Clear purges all stored items from the cache.
 func (c *cacheBase) Clear() {
 	for _, e := range c.cache {
-		kv := e.Value.(*entry)
-		if c.OnEvicted != nil {
-			c.OnEvicted(kv.key, kv.value)
+		kv, ok := e.Value.(*entry)
+		if ok {
+			if c.OnEvicted != nil {
+				c.OnEvicted(kv.key, kv.value)
+			}
+			delete(c.cache, kv.key)
 		}
-		delete(c.cache, kv.key)
 	}
 	c.ll.Init()
 }
