@@ -144,7 +144,7 @@ func TestMoveFile_NoPerm(t *testing.T) {
 	destFileContent, err := os.ReadFile(destPath)
 	assert.NoError(t, err)
 	assert.Equal(t, "src", string(destFileContent))
-	
+
 	// Assert source file removed
 	assert.NoFileExists(t, sourcePath)
 }

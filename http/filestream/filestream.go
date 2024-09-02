@@ -10,7 +10,6 @@ import (
 	"os"
 
 	ioutils "github.com/jfrog/gofrog/io"
-	"github.com/schollz/progressbar/v3"
 )
 
 const (
