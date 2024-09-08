@@ -49,6 +49,7 @@ func decrypt(ciphertext []byte, key []byte) (string, error) {
 		return "", errors.New("ciphertext too short")
 	}
 
+	//#nosec G407
 	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
 	decryptedBytes, err := gcm.Open(nil, nonce, ciphertext, nil)
 	return string(decryptedBytes), err
