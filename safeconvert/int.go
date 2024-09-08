@@ -36,3 +36,11 @@ func Uint64ToInt64(u uint64) (int64, error) {
 	}
 	return int64(u), nil
 }
+
+// SafeUint64ToInt converts uint64 to int safely, checking for overflow.
+func Uint64ToInt(u uint64) (int, error) {
+	if u > uint64(math.MaxInt) {
+		return 0, errors.New("integer overflow: uint64 value exceeds max int value")
+	}
+	return int(u), nil
+}
