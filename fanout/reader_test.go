@@ -2,6 +2,7 @@ package fanout
 
 import (
 	"bytes"
+	//#nosec G505 -- Sha1 is supported by Artifactory.
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
@@ -66,6 +67,7 @@ func TestFanoutRead(t *testing.T) {
 }
 
 func TestFanoutProgressiveRead(t *testing.T) {
+	//#nosec G401 -- Sha1 is supported by Artifactory.
 	hash1 := sha1.New()
 	proc1 := func(p []byte) (err error) {
 		if _, err := hash1.Write(p); err != nil {
@@ -104,7 +106,7 @@ func TestFanoutProgressiveRead(t *testing.T) {
 
 func TestFanoutProgressiveReadError(t *testing.T) {
 	const errmsg = "ERRSHA1"
-
+	//#nosec G401 -- Sha1 is supported by Artifactory.
 	hash1 := sha1.New()
 	proc1 := func(p []byte) (err error) {
 		return errors.New(errmsg)

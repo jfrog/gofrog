@@ -17,19 +17,8 @@ jobs:
       - name: Checkout Source
         uses: actions/checkout@v4
 
-      - name: Go Cache
-        uses: actions/cache@v4
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: 1.22.x
-          cache: false
+      - name: Setup Go with cache
+        uses: jfrog/.github/actions/install-go-with-cache@main
 
       - name: Tests
         run: go test -v -race -covermode atomic -coverprofile=covprofile ./...
