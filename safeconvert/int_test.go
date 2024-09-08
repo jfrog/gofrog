@@ -12,9 +12,9 @@ func TestSafeIntToUint(t *testing.T) {
 		expected    uint
 		errExpected bool
 	}{
-		{10, 10, false},
-		{-1, 0, true},
-		{0, 0, false},
+		{input: 10, expected: 10},
+		{input: -1, expected: 0, errExpected: true},
+		{input: 0, expected: 0},
 	}
 
 	for _, test := range tests {
@@ -34,9 +34,9 @@ func TestSafeUintToInt(t *testing.T) {
 		expected    int
 		errExpected bool
 	}{
-		{10, 10, false},
-		{uint(math.MaxInt), math.MaxInt, false},
-		{uint(math.MaxInt) + 1, 0, true},
+		{input: 10, expected: 10},
+		{input: uint(math.MaxInt), expected: math.MaxInt},
+		{input: uint(math.MaxInt) + 1, expected: 0, errExpected: true},
 	}
 
 	for _, test := range tests {
@@ -56,9 +56,9 @@ func TestSafeInt64ToUint64(t *testing.T) {
 		expected    uint64
 		errExpected bool
 	}{
-		{10, 10, false},
-		{-1, 0, true},
-		{0, 0, false},
+		{input: 10, expected: 10},
+		{input: -1, expected: 0, errExpected: true},
+		{input: 0, expected: 0},
 	}
 
 	for _, test := range tests {
@@ -78,9 +78,9 @@ func TestSafeUint64ToInt64(t *testing.T) {
 		expected    int64
 		errExpected bool
 	}{
-		{10, 10, false},
-		{math.MaxInt64, math.MaxInt64, false},
-		{math.MaxInt64 + 1, 0, true},
+		{input: 10, expected: 10},
+		{input: math.MaxInt64, expected: math.MaxInt64},
+		{input: math.MaxInt64 + 1, expected: 0, errExpected: true},
 	}
 
 	for _, test := range tests {
