@@ -243,7 +243,7 @@ func (config *Command) GetCmd() (cmd *exec.Cmd) {
 	if config.CmdName != "" {
 		cmdStr = append(cmdStr, config.CmdName)
 	}
-	if config.CmdArgs != nil && len(config.CmdArgs) > 0 {
+	if len(config.CmdArgs) > 0 {
 		cmdStr = append(cmdStr, config.CmdArgs...)
 	}
 	cmd = exec.Command(config.Executable, cmdStr...)

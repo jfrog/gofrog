@@ -2,12 +2,13 @@ package io
 
 import (
 	"bufio"
+	"crypto/rand"
 	cr "crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
+	"math/big"
 	"net/http"
 	"os"
 	"path"
@@ -35,16 +36,15 @@ type RandFile struct {
 
 const buflen = 4096
 
-var src = rand.NewSource(time.Now().UnixNano())
-
-// #nosec G404 - No cryptographic level encryption is needed in random file
-var rnd = rand.New(src)
-
 // Create a temp file with the requested prefix at the provided dir. File length and contents are random, up to the requested max length.
 func CreateRandomLenFile(maxLen int, filesDir string, prefix string) string {
 	file, _ := os.CreateTemp(filesDir, prefix)
 	fname := file.Name()
-	len := rnd.Intn(maxLen)
+	n, err := rand.Int(rand.Reader, big.NewInt(int64(maxLen)))
+	if err != nil {
+		panic(fmt.Errorf("failed to generate random number: %w", err))
+	}
+	len := int(n.Int64())
 	created, err := CreateRandFile(fname, len)
 	if err != nil {
 		panic(err)
@@ -127,7 +127,7 @@ func walk(path string, info os.FileInfo, walkFn WalkFunc, visitedDirSymlinks map
 	}
 	err = walkFn(path, info, nil)
 	if err != nil {
-		if info.IsDir() && err == ErrSkipDir {
+		if info.IsDir() && errors.Is(err, ErrSkipDir) {
 			return nil
 		}
 		return err
@@ -161,13 +161,13 @@ func walk(path string, info os.FileInfo, walkFn WalkFunc, visitedDirSymlinks map
 		}
 		fileInfo, err := fileHandler(filename)
 		if err != nil {
-			if err := walkFn(filename, fileInfo, err); err != nil && err != ErrSkipDir {
+			if err := walkFn(filename, fileInfo, err); err != nil && !errors.Is(err, ErrSkipDir) {
 				return err
 			}
 		} else {
 			err = walk(filename, fileInfo, walkFn, visitedDirSymlinks, walkIntoDirSymlink)
 			if err != nil {
-				if !fileInfo.IsDir() || err != ErrSkipDir {
+				if !fileInfo.IsDir() || !errors.Is(err, ErrSkipDir) {
 					return err
 				}
 			}
