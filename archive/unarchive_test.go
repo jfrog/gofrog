@@ -50,7 +50,7 @@ func TestUnarchiveSymlink(t *testing.T) {
 					// Create temp directory
 					tmpDir := t.TempDir()
 
-					// Run archive
+					// Run unarchive
 					err := runUnarchive(t, uarchiver, testCase.prefix+"."+extension, "archives", tmpDir)
 					assert.NoError(t, err)
 
