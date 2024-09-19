@@ -1,4 +1,4 @@
-package unarchive
+package archive
 
 import (
 	"encoding/json"
@@ -33,7 +33,7 @@ func IsSupportedArchive(filePath string) bool {
 	return ok
 }
 
-// The 'archiver' dependency includes an API called 'Unarchive' to extract archive files. This API uses the archive file
+// The 'archive' dependency includes an API called 'Unarchive' to extract archive files. This API uses the archive file
 // extension to determine the archive type.
 // We therefore need to use the file name as it was in Artifactory, and not the file name which was downloaded. To achieve this,
 // we added a new implementation of the 'Unarchive' func and use it instead of the default one.
@@ -58,7 +58,7 @@ func (u *Unarchiver) Unarchive(archivePath, archiveName, destinationPath string)
 	return unarchiver.Unarchive(archivePath, destinationPath)
 }
 
-// Instead of using 'archiver.byExtension' that by default sets OverwriteExisting to false, we implement our own.
+// Instead of using 'archive.byExtension' that by default sets OverwriteExisting to false, we implement our own.
 func (u *Unarchiver) byExtension(filename string) (interface{}, error) {
 	var ec interface{}
 	for _, c := range supportedArchives {

@@ -1,4 +1,4 @@
-package unarchive
+package archive
 
 import (
 	"os"
@@ -16,13 +16,13 @@ func TestUnarchive(t *testing.T) {
 			// Create temp directory
 			tmpDir := t.TempDir()
 
-			// Run unarchive on archive created on Unix
+			// Run archive on archive created on Unix
 			err := runUnarchive(t, uarchiver, "unix."+extension, "archives", filepath.Join(tmpDir, "unix"))
 			assert.NoError(t, err)
 			assert.FileExists(t, filepath.Join(tmpDir, "unix", "link"))
 			assert.FileExists(t, filepath.Join(tmpDir, "unix", "dir", "file"))
 
-			// Run unarchive on archive created on Windows
+			// Run archive on archive created on Windows
 			err = runUnarchive(t, uarchiver, "win."+extension, "archives", filepath.Join(tmpDir, "win"))
 			assert.NoError(t, err)
 			assert.FileExists(t, filepath.Join(tmpDir, "win", "link.lnk"))
@@ -50,7 +50,7 @@ func TestUnarchiveSymlink(t *testing.T) {
 					// Create temp directory
 					tmpDir := t.TempDir()
 
-					// Run unarchive
+					// Run archive
 					err := runUnarchive(t, uarchiver, testCase.prefix+"."+extension, "archives", tmpDir)
 					assert.NoError(t, err)
 
@@ -104,13 +104,13 @@ func TestUnarchiveWithStripComponents(t *testing.T) {
 			// Create temp directory
 			tmpDir := t.TempDir()
 
-			// Run unarchive on archive created on Unix
+			// Run archive on archive created on Unix
 			err := runUnarchive(t, uarchiver, "strip-components."+extension, "archives", filepath.Join(tmpDir, "unix"))
 			assert.NoError(t, err)
 			assert.DirExists(t, filepath.Join(tmpDir, "unix", "nested_folder_1"))
 			assert.DirExists(t, filepath.Join(tmpDir, "unix", "nested_folder_2"))
 
-			// Run unarchive on archive created on Windows
+			// Run archive on archive created on Windows
 			err = runUnarchive(t, uarchiver, "strip-components."+extension, "archives", filepath.Join(tmpDir, "win"))
 			assert.NoError(t, err)
 			assert.DirExists(t, filepath.Join(tmpDir, "win", "nested_folder_1"))
@@ -119,12 +119,12 @@ func TestUnarchiveWithStripComponents(t *testing.T) {
 	}
 }
 
-// Test unarchive file with a directory named "." in the root directory
+// Test archive file with a directory named "." in the root directory
 func TestUnarchiveDotDir(t *testing.T) {
 	// Create temp directory
 	tmpDir := t.TempDir()
 
-	// Run unarchive
+	// Run archive
 	err := runUnarchive(t, Unarchiver{}, "dot-dir.tar.gz", "archives", tmpDir+string(os.PathSeparator))
 	assert.NoError(t, err)
 	assert.DirExists(t, filepath.Join(tmpDir, "dir"))

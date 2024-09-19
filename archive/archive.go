@@ -1,4 +1,4 @@
-package unarchive
+package archive
 
 import (
 	"fmt"
