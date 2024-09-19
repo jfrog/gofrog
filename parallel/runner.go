@@ -58,8 +58,6 @@ type runner struct {
 	threadCount atomic.Uint32
 	// The number of open threads.
 	openThreads atomic.Uint32
-	// A lock on openThreads.
-	openThreadsLock sync.Mutex
 	// The number of threads currently running tasks.
 	activeThreads atomic.Uint32
 	// The number of tasks in the queue.
@@ -250,9 +248,7 @@ func (r *runner) addThread() {
 	nextThreadId := r.threadCount.Add(1) - 1
 	go func(threadId int) {
 		defer r.threadsWaitGroup.Done()
-		r.openThreadsLock.Lock()
 		r.openThreads.Add(1)
-		r.openThreadsLock.Unlock()
 
 		// Keep on taking tasks from the queue.
 		for t := range r.tasks {
@@ -290,14 +286,11 @@ func (r *runner) addThread() {
 				}
 			}
 
-			r.openThreadsLock.Lock()
 			// If the total of open threads is larger than the maximum (maxParallel), then this thread should be closed.
 			if int(r.openThreads.Load()) > r.maxParallel {
 				r.openThreads.Add(^uint32(0))
-				r.openThreadsLock.Unlock()
 				break
 			}
-			r.openThreadsLock.Unlock()
 		}
 	}(int(nextThreadId))
 }
