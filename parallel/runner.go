@@ -58,8 +58,6 @@ type runner struct {
 	threadCount atomic.Uint32
 	// The number of open threads.
 	openThreads atomic.Uint32
-	// A lock on openThreads.
-	openThreadsLock sync.Mutex
 	// The number of threads currently running tasks.
 	activeThreads atomic.Uint32
 	// The number of tasks in the queue.
