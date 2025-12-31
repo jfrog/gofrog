@@ -51,7 +51,9 @@ func (r *Reader) Read(p []byte) (int, error) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		defer r.close()
+		defer func() {
+			_ = r.close()
+		}()
 		// Read from reader and fan out to the writers
 		n, err := r.reader.Read(p)
 		if err != nil {

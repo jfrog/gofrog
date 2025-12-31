@@ -26,7 +26,9 @@ func RunCmdOutput(config CmdConfig) (string, error) {
 		cmd.Stderr = os.Stderr
 	} else {
 		cmd.Stderr = config.GetErrWriter()
-		defer config.GetErrWriter().Close()
+		defer func() {
+			_ = config.GetErrWriter().Close()
+		}()
 	}
 	output, err := cmd.Output()
 	return string(output), err
@@ -45,14 +47,18 @@ func RunCmd(config CmdConfig) error {
 		cmd.Stdout = os.Stdout
 	} else {
 		cmd.Stdout = config.GetStdWriter()
-		defer config.GetStdWriter().Close()
+		defer func() {
+			_ = config.GetStdWriter().Close()
+		}()
 	}
 
 	if config.GetErrWriter() == nil {
 		cmd.Stderr = os.Stderr
 	} else {
 		cmd.Stderr = config.GetErrWriter()
-		defer config.GetErrWriter().Close()
+		defer func() {
+			_ = config.GetErrWriter().Close()
+		}()
 	}
 	err := cmd.Start()
 	if err != nil {

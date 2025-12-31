@@ -3,7 +3,6 @@ package io
 import (
 	"bufio"
 	"crypto/rand"
-	cr "crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -49,7 +48,9 @@ func CreateRandomLenFile(maxLen int, filesDir string, prefix string) string {
 	if err != nil {
 		panic(err)
 	}
-	defer created.Close()
+	defer func() {
+		_ = created.Close()
+	}()
 	// Check that the files were created with expected len
 	if created.Info.Size() != int64(len) {
 		panic(fmt.Errorf("unexpected file length. Expected: %d, Got %d", created.Info.Size(), len))
@@ -74,7 +75,7 @@ func CreateRandFile(path string, len int) (file *RandFile, err error) {
 	buf := make([]byte, buflen)
 
 	for i := 0; i <= len; i += buflen {
-		_, err := cr.Read(buf)
+		_, err := rand.Read(buf)
 		if err != nil {
 			return nil, err
 		}

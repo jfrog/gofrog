@@ -77,7 +77,9 @@ func (r *ReadAllReader) ReadAll() ([]interface{}, error) {
 			reader := r.pipeReaders[pos]
 			// The reader might stop but the writer hasn't done
 			// Closing the pipe will cause an error to the writer which will cause all readers to stop as well
-			defer reader.Close()
+			defer func() {
+				_ = reader.Close()
+			}()
 			ret, perr := sr.ReadAll(reader)
 			if perr != nil {
 				r.errs <- errors.WithStack(perr)
