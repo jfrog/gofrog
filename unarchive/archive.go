@@ -152,7 +152,7 @@ func inspectArchive(archive interface{}, localArchivePath, destinationDir string
 			return err
 		}
 		pathInArchive := getPathInArchive(destinationDir, "", header.EntryPath)
-		if !strings.HasPrefix(pathInArchive, destinationDir) {
+		if !within(destinationDir, pathInArchive) {
 			return fmt.Errorf(
 				"illegal path in archive: '%s'. To prevent Zip Slip exploit, the path can't lead to an entry outside '%s'",
 				header.EntryPath, destinationDir)
@@ -187,13 +187,24 @@ func checkSymlinkEntry(header *archiveHeader, archiveEntry archiver.File, destin
 	}
 
 	targetPathInArchive := getPathInArchive(destinationDir, filepath.Dir(header.EntryPath), targetLinkPath)
-	if !strings.HasPrefix(targetPathInArchive, destinationDir) {
+	if !within(destinationDir, targetPathInArchive) {
 		return "", fmt.Errorf(
 			"illegal link path in archive: '%s'. To prevent Zip Slip Symlink exploit, the path can't lead to an entry outside '%s'",
 			targetLinkPath, destinationDir)
 	}
 
 	return targetPathInArchive, nil
+}
+
+// within returns true if sub is within or equal to parent, using a path-boundary comparison
+// rather than a string prefix comparison (which a sibling directory sharing parent's name as a
+// prefix, e.g. "out-evil" vs "out", would incorrectly pass).
+func within(parent, sub string) bool {
+	rel, err := filepath.Rel(parent, sub)
+	if err != nil {
+		return false
+	}
+	return !strings.Contains(rel, "..")
 }
 
 // Get the path in archive of the entry or the target link
