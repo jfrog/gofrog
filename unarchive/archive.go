@@ -204,7 +204,7 @@ func within(parent, sub string) bool {
 	if err != nil {
 		return false
 	}
-	return !strings.Contains(rel, "..")
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator))
 }
 
 // Get the path in archive of the entry or the target link

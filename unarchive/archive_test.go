@@ -1,11 +1,13 @@
 package unarchive
 
 import (
+	"archive/zip"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUnarchive(t *testing.T) {
@@ -93,6 +95,24 @@ func TestUnarchiveZipSlip(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestUnarchiveAllowsDotsInFilename(t *testing.T) {
+	archivePath := filepath.Join(t.TempDir(), "dots.zip")
+	archiveFile, err := os.Create(archivePath)
+	require.NoError(t, err)
+	zipWriter := zip.NewWriter(archiveFile)
+	entry, err := zipWriter.Create("name..patch")
+	require.NoError(t, err)
+	_, err = entry.Write([]byte("patch"))
+	require.NoError(t, err)
+	require.NoError(t, zipWriter.Close())
+	require.NoError(t, archiveFile.Close())
+
+	destinationDir := t.TempDir()
+	uarchiver := Unarchiver{}
+	assert.NoError(t, uarchiver.Unarchive(archivePath, "dots.zip", destinationDir))
+	assert.FileExists(t, filepath.Join(destinationDir, "name..patch"))
 }
 
 func TestUnarchiveWithStripComponents(t *testing.T) {
