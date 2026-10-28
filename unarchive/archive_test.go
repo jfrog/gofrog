@@ -115,6 +115,27 @@ func TestUnarchiveAllowsDotsInFilename(t *testing.T) {
 	assert.FileExists(t, filepath.Join(destinationDir, "name..patch"))
 }
 
+func TestUnarchiveRejectsDotPrefixedTraversal(t *testing.T) {
+	archivePath := filepath.Join(t.TempDir(), "traversal.zip")
+	archiveFile, err := os.Create(archivePath)
+	require.NoError(t, err)
+	zipWriter := zip.NewWriter(archiveFile)
+	entry, err := zipWriter.Create("./../outside.file")
+	require.NoError(t, err)
+	_, err = entry.Write([]byte("outside"))
+	require.NoError(t, err)
+	require.NoError(t, zipWriter.Close())
+	require.NoError(t, archiveFile.Close())
+
+	parentDir := t.TempDir()
+	destinationDir := filepath.Join(parentDir, "destination")
+	require.NoError(t, os.Mkdir(destinationDir, 0o755))
+	uarchiver := Unarchiver{}
+	err = uarchiver.Unarchive(archivePath, "traversal.zip", destinationDir)
+	assert.ErrorContains(t, err, "illegal path in archive: './../outside.file'")
+	assert.NoFileExists(t, filepath.Join(parentDir, "outside.file"))
+}
+
 func TestUnarchiveWithStripComponents(t *testing.T) {
 	tests := []string{"zip", "tar", "tar.gz"}
 	uarchiver := Unarchiver{}
