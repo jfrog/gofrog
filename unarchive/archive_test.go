@@ -114,7 +114,8 @@ func TestUnarchiveBypassInspectionLinksOutsideDestination(t *testing.T) {
 
 				target, err := os.Readlink(filepath.Join(tmpDir, test.testType, test.testType))
 				assert.NoError(t, err)
-				assert.Equal(t, test.expectedTarget, target)
+				// On Windows, os.Symlink stores the target with backslashes.
+				assert.Equal(t, filepath.FromSlash(test.expectedTarget), target)
 			})
 		}
 	}
