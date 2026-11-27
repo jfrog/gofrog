@@ -95,6 +95,32 @@ func TestUnarchiveZipSlip(t *testing.T) {
 	}
 }
 
+// With BypassInspection, links whose targets are outside the destination must be created as in the archive.
+func TestUnarchiveBypassInspectionLinksOutsideDestination(t *testing.T) {
+	tests := []struct {
+		testType       string
+		expectedTarget string
+	}{
+		{"softlink-abs", "/tmp/bla/file"},
+		{"softlink-rel", "../../file"},
+	}
+
+	uarchiver := Unarchiver{BypassInspection: true}
+	for _, test := range tests {
+		for _, extension := range []string{"zip", "tar", "tar.gz"} {
+			t.Run(test.testType+"."+extension, func(t *testing.T) {
+				tmpDir := t.TempDir()
+				assert.NoError(t, runUnarchive(t, uarchiver, test.testType+"."+extension, "zipslip", tmpDir))
+
+				target, err := os.Readlink(filepath.Join(tmpDir, test.testType, test.testType))
+				assert.NoError(t, err)
+				// On Windows, os.Symlink stores the target with backslashes.
+				assert.Equal(t, filepath.FromSlash(test.expectedTarget), target)
+			})
+		}
+	}
+}
+
 func TestUnarchiveWithStripComponents(t *testing.T) {
 	tests := []string{"zip", "tar", "tar.gz"}
 	uarchiver := Unarchiver{}

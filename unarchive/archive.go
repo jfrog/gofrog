@@ -14,6 +14,8 @@ import (
 )
 
 type Unarchiver struct {
+	// BypassInspection skips the archive inspection before extraction, and lets the extraction create symbolic and
+	// hard links whose targets are outside the destination directory. Use it only for trusted archives.
 	BypassInspection bool
 	StripComponents  int
 }
@@ -77,46 +79,55 @@ func (u *Unarchiver) byExtension(filename string) (interface{}, error) {
 		archiveInstance := archiver.NewTar()
 		archiveInstance.OverwriteExisting = true
 		archiveInstance.StripComponents = u.StripComponents
+		archiveInstance.AllowLinksOutsideDestination = u.BypassInspection
 		return archiveInstance, nil
 	case *archiver.TarBrotli:
 		archiveInstance := archiver.NewTarBrotli()
 		archiveInstance.OverwriteExisting = true
 		archiveInstance.StripComponents = u.StripComponents
+		archiveInstance.AllowLinksOutsideDestination = u.BypassInspection
 		return archiveInstance, nil
 	case *archiver.TarBz2:
 		archiveInstance := archiver.NewTarBz2()
 		archiveInstance.OverwriteExisting = true
 		archiveInstance.StripComponents = u.StripComponents
+		archiveInstance.AllowLinksOutsideDestination = u.BypassInspection
 		return archiveInstance, nil
 	case *archiver.TarGz:
 		archiveInstance := archiver.NewTarGz()
 		archiveInstance.OverwriteExisting = true
 		archiveInstance.StripComponents = u.StripComponents
+		archiveInstance.AllowLinksOutsideDestination = u.BypassInspection
 		return archiveInstance, nil
 	case *archiver.TarLz4:
 		archiveInstance := archiver.NewTarLz4()
 		archiveInstance.OverwriteExisting = true
 		archiveInstance.StripComponents = u.StripComponents
+		archiveInstance.AllowLinksOutsideDestination = u.BypassInspection
 		return archiveInstance, nil
 	case *archiver.TarSz:
 		archiveInstance := archiver.NewTarSz()
 		archiveInstance.OverwriteExisting = true
 		archiveInstance.StripComponents = u.StripComponents
+		archiveInstance.AllowLinksOutsideDestination = u.BypassInspection
 		return archiveInstance, nil
 	case *archiver.TarXz:
 		archiveInstance := archiver.NewTarXz()
 		archiveInstance.OverwriteExisting = true
 		archiveInstance.StripComponents = u.StripComponents
+		archiveInstance.AllowLinksOutsideDestination = u.BypassInspection
 		return archiveInstance, nil
 	case *archiver.TarZstd:
 		archiveInstance := archiver.NewTarZstd()
 		archiveInstance.OverwriteExisting = true
 		archiveInstance.StripComponents = u.StripComponents
+		archiveInstance.AllowLinksOutsideDestination = u.BypassInspection
 		return archiveInstance, nil
 	case *archiver.Zip:
 		archiveInstance := archiver.NewZip()
 		archiveInstance.OverwriteExisting = true
 		archiveInstance.StripComponents = u.StripComponents
+		archiveInstance.AllowLinksOutsideDestination = u.BypassInspection
 		return archiveInstance, nil
 	case *archiver.Gz:
 		return archiver.NewGz(), nil
